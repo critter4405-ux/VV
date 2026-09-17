@@ -3,11 +3,19 @@
 // vor und legt ein Freigabe-Objekt an. Stage-0: Boot + Beispiel-Job (Terminerinnerung
 // als Trivial-Routine unter stehender Klasse-Freigabe, B09-1).
 import PgBoss from "pg-boss";
+import { writeFileSync } from "node:fs";
+
+// Heartbeat für den Compose-Healthcheck (WP4/Review #11): Datei je Tick berühren.
+function beat() {
+  try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
+}
 
 async function main() {
   const boss = new PgBoss({ connectionString: process.env.DATABASE_URL });
   boss.on("error", (err) => console.error("[vv-worker] pg-boss error:", err));
   await boss.start();
+  beat();
+  setInterval(beat, 30_000);
 
   const QUEUE = "reminder.dispatch";
   await boss.createQueue(QUEUE);

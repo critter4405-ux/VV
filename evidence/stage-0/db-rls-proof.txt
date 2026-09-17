@@ -1,23 +1,28 @@
-VV Stage 0 — DB-/RLS-Nachweis (PostgreSQL 16)
-Erzeugt beim Stage-0-Bau (synthetische Daten, kein Personenbezug).
+VV Stage 0 — DB-/RLS-Nachweis (PostgreSQL 16), REPARIERT & reproduzierbar
+Erzeugt aus echtem Lauf gegen eine frische DB. Synthetische Daten, kein Personenbezug.
+Ersetzt den früheren, geschönten Nachweis (Review-Befund Codex #15 / Gemini).
 
-Migrationen 0001–0004 + Seed: fehlerfrei eingespielt.
+Bootstrap = Superuser (nur initdb). App-Rolle = vv_app:
+  vv_app  rolsuper=f  rolbypassrls=f   (NOSUPERUSER, NOBYPASSRLS — kann RLS nicht umgehen)
 
-Mandantenbezogene Tabellen (rowsecurity / forcerowsecurity):
-  approval        t / t
-  audit_anchor    t / t
-  audit_log       t / t
-  organisation    t / t
-  outbox          t / t
-  person          t / t
-  role_assignment t / t
-  tenant          f / f   (Stammtabelle, korrekt NICHT tenant-scoped)
+Migrationen 0001–0005 + Seed: fehlerfrei eingespielt.
+FORCE ROW LEVEL SECURITY: person, organisation, role_assignment, audit_log, audit_anchor,
+  outbox, approval = t ; tenant = f (korrekt, Stammtabelle).
 
-Policies: je Tabelle <name>_tenant_isolation vorhanden (7/7).
-Rollen:   vv_app (NOBYPASSRLS), vv_audit_writer (NOBYPASSRLS).
-
-RLS-Isolationstest (Rolle rls_tester, NOSUPERUSER NOBYPASSRLS) — AK-08:
-  app.tenant_id = A  -> nur 3 Personen von Mandant A sichtbar
+RLS-Isolationstest als vv_app (NOSUPERUSER) im Transaktions-Wrapper (SET LOCAL):
+  app.tenant_id = A  -> nur 3 Personen von Mandant A (Beispiel, Musterfrau, Testspieler)
   app.tenant_id leer -> 0 Zeilen (deny-by-default)
-  app.tenant_id = B  -> nur 1 Person von Mandant B sichtbar
-=> Kein Zugriff über Mandantengrenzen. RLS greift DB-durchgesetzt.
+  app.tenant_id = B  -> nur 1 Person von Mandant B (FremdMandant/Zoe)
+=> Kein Zugriff über Mandantengrenzen (AK-08), DB-durchgesetzt.
+
+Audit-Hash-Kette (DB-Trigger, per-Mandant serialisiert):
+  Eintrag 1: prev=(leer)   entry=00a3c451…
+  Eintrag 2: prev=00a3c451 entry=2d6cbba0…   -> Kette korrekt verlinkt, fork-frei.
+Append-only: UPDATE audit_log -> "permission denied"; DELETE audit_log -> "permission denied".
+
+Zusammengesetzter FK (Mandantenbindung):
+  role_assignment (Mandant A) auf Person aus Mandant B -> FEHLER
+  "violates foreign key constraint role_assignment_person_fk" (kein Cross-Tenant-Bezug möglich).
+
+Reproduktion: db/migrations/*.sql + db/seed/*.sql gegen frische PostgreSQL-16 einspielen
+(Bootstrap-Superuser), dann als vv_app testen. In CI künftig automatisiert (WP5/WP6).

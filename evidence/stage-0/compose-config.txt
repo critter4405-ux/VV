@@ -11,7 +11,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - exec 3<>/dev/tcp/localhost/8080 && echo ok >&3
+        - exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3 && cat <&3 | grep -q UP
       timeout: 5s
       interval: 10s
       retries: 30
@@ -22,6 +22,10 @@ services:
       - mode: ingress
         target: 8080
         published: "8080"
+        protocol: tcp
+      - mode: ingress
+        target: 9000
+        published: "9000"
         protocol: tcp
     volumes:
       - type: bind
@@ -45,13 +49,13 @@ services:
       timeout: 5s
       interval: 10s
       retries: 20
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
     networks:
       default: null
     ports:
       - mode: ingress
         target: 9000
-        published: "9000"
+        published: "9002"
         protocol: tcp
       - mode: ingress
         target: 9001
@@ -66,11 +70,12 @@ services:
     environment:
       POSTGRES_DB: vv
       POSTGRES_PASSWORD: change_me_dev_only
-      POSTGRES_USER: vv_app
+      POSTGRES_USER: vv_bootstrap
+      VV_APP_PASSWORD: change_me_dev_only
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U vv_app -d vv
+        - pg_isready -U vv_bootstrap -d vv
       timeout: 5s
       interval: 5s
       retries: 20
@@ -88,13 +93,13 @@ services:
         target: /var/lib/postgresql/data
         volume: {}
       - type: bind
-        source: /home/claude/vv/db/migrations
-        target: /docker-entrypoint-initdb.d/00-migrations
+        source: /home/claude/vv/db
+        target: /db
         read_only: true
         bind: {}
       - type: bind
-        source: /home/claude/vv/db/seed
-        target: /docker-entrypoint-initdb.d/10-seed
+        source: /home/claude/vv/db/init/00_init.sh
+        target: /docker-entrypoint-initdb.d/00_init.sh
         read_only: true
         bind: {}
   web:
@@ -128,12 +133,16 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PASSWORD: change_me_dev_only
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: vv_app
+      POSTGRES_USER: vv_bootstrap
       S3_BUCKET: vv-dev
       S3_ENDPOINT: http://minio:9000
       S3_REGION: at-1
+      VV_APP_PASSWORD: change_me_dev_only
+      VV_APP_USER: vv_app
       VV_DATA_MODE: synthetic
       WORKER_CONCURRENCY: "2"
+      WORKER_OIDC_CLIENT_ID: vv-worker
+      WORKER_OIDC_CLIENT_SECRET: change_me_dev_only
     healthcheck:
       test:
         - CMD-SHELL
@@ -173,12 +182,23 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PASSWORD: change_me_dev_only
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: vv_app
+      POSTGRES_USER: vv_bootstrap
       S3_BUCKET: vv-dev
       S3_ENDPOINT: http://minio:9000
       S3_REGION: at-1
+      VV_APP_PASSWORD: change_me_dev_only
+      VV_APP_USER: vv_app
       VV_DATA_MODE: synthetic
       WORKER_CONCURRENCY: "2"
+      WORKER_OIDC_CLIENT_ID: vv-worker
+      WORKER_OIDC_CLIENT_SECRET: change_me_dev_only
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/vv-worker-alive && find /tmp/vv-worker-alive -mmin -1 | grep -q .
+      timeout: 5s
+      interval: 30s
+      retries: 5
     networks:
       default: null
 networks:

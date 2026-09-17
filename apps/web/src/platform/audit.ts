@@ -1,27 +1,18 @@
-// VV Platform — Audit-Schreiber (ADR-05, BASIS-03). Append-only Hash-Kette.
-import { createHash } from "node:crypto";
+// VV Platform — Audit-Schreiber (ADR-05, BASIS-03), WP2-gehärtet.
+// Review-Befund Codex #6 / Gemini B: Hash-Kette darf NICHT im App-Layer per read-then-write
+// gebildet werden (Race/Fork). Sie wird jetzt DB-seitig im Trigger `vv_audit_chain` unter
+// per-Mandant-Advisory-Lock berechnet (siehe 0003_audit_outbox.sql). Der App-Schreiber fügt
+// nur die Fachfelder ein — in DERSELBEN Transaktion wie die Datenänderung (withTenant).
 import type { PoolClient } from "pg";
-
-export function chainHash(prevHash: string | null, content: unknown): string {
-  return createHash("sha256")
-    .update((prevHash ?? "") + JSON.stringify(content))
-    .digest("hex");
-}
 
 export async function writeAudit(
   client: PoolClient,
   entry: { tenantId: string; actor: string; action: string; subjectRef?: string; payload?: unknown },
 ): Promise<void> {
-  const { rows } = await client.query(
-    "SELECT entry_hash FROM audit_log WHERE tenant_id = $1 ORDER BY id DESC LIMIT 1",
-    [entry.tenantId],
-  );
-  const prev = rows[0]?.entry_hash ?? null;
-  const content = { a: entry.action, s: entry.subjectRef ?? null, p: entry.payload ?? {} };
-  const hash = chainHash(prev, content);
   await client.query(
-    `INSERT INTO audit_log (tenant_id, actor, action, subject_ref, payload, prev_hash, entry_hash)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [entry.tenantId, entry.actor, entry.action, entry.subjectRef ?? null, entry.payload ?? {}, prev, hash],
+    `INSERT INTO audit_log (tenant_id, actor, action, subject_ref, payload)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [entry.tenantId, entry.actor, entry.action, entry.subjectRef ?? null, entry.payload ?? {}],
   );
+  // prev_hash/entry_hash werden vom BEFORE-INSERT-Trigger gesetzt (kanonisch, fork-frei).
 }
