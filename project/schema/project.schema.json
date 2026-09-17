@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://vv.local/project.schema.json",
+  "title": "VV Projektwahrheit — Baustein-Fragment (ADR-09)",
+  "description": "Maschinen-prüfbare Bau-Wahrheit je Baustein. Ebenentrennung: Register=Mensch, project.json=Maschine, ADR=Architektur (nur Referenzen).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "name", "kind", "version", "status", "gate", "adr", "dossier", "gates", "register_refs"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^(VV-BASIS-[0-9]{2}|VV-ORG|VV-CORE-SYNC|VV-ADMIN|VV-M[0-9]{2}|VV-A[0-9]{2}|VV-STAGE-0)$",
+      "description": "Eindeutiger Baustein-Code."
+    },
+    "name": { "type": "string", "minLength": 3 },
+    "kind": { "type": "string", "enum": ["basis", "core", "admin", "org", "module", "agent", "stage"] },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "status": { "type": "string", "enum": ["skeleton", "in_bau", "geprueft", "freigegeben"] },
+    "gate": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "adr": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^ADR-[0-9]{2}$" },
+      "description": "Referenzierte Architekturentscheidungen (nur Referenz, keine Kopie)."
+    },
+    "dossier": {
+      "type": "string",
+      "pattern": "^docs/bausteine/.+\\.md$",
+      "description": "Pfad zum Bau-Dossier (9-teilige Vorlage, K29)."
+    },
+    "module": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["name", "path"],
+      "properties": {
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "allowed_cross_module_imports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "description": "Von diesem Baustein besessene DB-Tabellen (ADR-02: ein Eigentümer).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "tenant_scoped"],
+        "properties": {
+          "name": { "type": "string" },
+          "tenant_scoped": { "type": "boolean" }
+        }
+      },
+      "default": []
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Freigabe-Gates 0–7 mit verlinkter Evidenz (ADR-09: jedes Gate hat Evidenz).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "evidence"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0, "maximum": 7 },
+          "title": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Pfade zu Evidenz-Artefakten (müssen existieren)."
+          }
+        }
+      }
+    },
+    "register_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Verweise ins Register (K##/Q##/B0x-#) — Provenienz der Entscheidung."
+    }
+  }
+}

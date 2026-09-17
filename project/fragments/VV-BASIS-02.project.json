@@ -1,0 +1,39 @@
+{
+  "code": "VV-BASIS-02",
+  "name": "Rollen & Rechte",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-04",
+    "ADR-01"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-02.md",
+  "tables": [
+    {
+      "name": "role_assignment",
+      "tenant_scoped": true
+    }
+  ],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-02.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "Q03",
+    "B02-1",
+    "B02-2"
+  ],
+  "module": {
+    "name": "BASIS-02 RBAC",
+    "path": "apps/web/src/modules/rbac",
+    "allowed_cross_module_imports": []
+  }
+}

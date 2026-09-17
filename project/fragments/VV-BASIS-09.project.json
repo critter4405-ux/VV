@@ -1,0 +1,34 @@
+{
+  "code": "VV-BASIS-09",
+  "name": "Agenten-Orchestrierung",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-07",
+    "ADR-06",
+    "ADR-09"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-09.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-09.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B09-1",
+    "Q02"
+  ],
+  "module": {
+    "name": "Worker/Orchestrierung",
+    "path": "apps/worker",
+    "allowed_cross_module_imports": []
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "code": "VV-BASIS-04",
+  "name": "Datenschutz & Einwilligungen",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-07"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-04.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-04.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B04-1",
+    "B04-2",
+    "B04-3",
+    "Q01"
+  ],
+  "module": null
+}

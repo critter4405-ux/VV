@@ -1,0 +1,40 @@
+{
+  "code": "VV-BASIS-01",
+  "name": "Personen- & Mitgliederregister",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-01"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-01.md",
+  "tables": [
+    {
+      "name": "person",
+      "tenant_scoped": true
+    }
+  ],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-01.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "K02",
+    "B01-1",
+    "B01-2",
+    "Q01",
+    "Q05"
+  ],
+  "module": {
+    "name": "BASIS-01 Person",
+    "path": "apps/web/src/modules/person",
+    "allowed_cross_module_imports": []
+  }
+}

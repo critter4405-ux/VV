@@ -1,0 +1,68 @@
+# VV CI — Stage 0. Build + Validatoren gate-blockierend. NUR synthetische Daten.
+# HARTE REGEL (ADR-10): niemals echte/personenbezogene Daten im Repo/CI.
+name: vv-ci
+
+on:
+  push:
+    branches: [ main, "stage-*", "feat/**" ]
+  pull_request:
+
+# Gate-blockierend: schlägt ein Job fehl, ist das Gate ROT.
+jobs:
+  validators:
+    name: ADR-Validatoren (Gate 0→1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Abhängigkeiten
+        run: python -m pip install -r validators/requirements.txt
+      - name: Datenschutz-Guard — kein .env / keine echten Daten im Repo
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "::error::.env darf nicht committet sein"; exit 1
+          fi
+          echo "OK: kein .env committet."
+      - name: Validatoren ausführen (gate-blockierend)
+        run: python -m validators.validate
+      - name: Evidenz-Report als Artefakt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validator-report
+          path: evidence/stage-0/validator-report.json
+
+  compose-config:
+    name: docker compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose-Konfiguration validieren
+        run: |
+          cp .env.example .env
+          docker compose config > /dev/null
+          echo "OK: docker-compose.yml ist gültig."
+
+  build-web:
+    name: Typecheck Web/API
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+
+  build-worker:
+    name: Typecheck Worker
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/worker } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck

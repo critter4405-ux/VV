@@ -1,0 +1,55 @@
+{
+  "realm": "vv",
+  "enabled": true,
+  "displayName": "VV (Stage 0, synthetisch)",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "passwordPolicy": "length(12) and notUsername and passwordHistory(3)",
+  "bruteForceProtected": true,
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "enabled": true,
+      "defaultAction": true
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "vv-web",
+      "name": "VV Web/API (OIDC-Client)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "secret": "change_me_dev_only"
+    },
+    {
+      "clientId": "vv-worker",
+      "name": "VV Worker (Client-Credentials, technische Identität)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "change_me_dev_only"
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "mandanten-admin" },
+      { "name": "vorstand" },
+      { "name": "kassier" },
+      { "name": "kassapruefer" },
+      { "name": "kinderschutzbeauftragte" },
+      { "name": "trainer" },
+      { "name": "mitglied" }
+    ]
+  }
+}

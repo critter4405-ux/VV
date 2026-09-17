@@ -1,0 +1,32 @@
+{
+  "code": "VV-ORG",
+  "name": "Organisationsregister (juristische Personen)",
+  "kind": "org",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-01"
+  ],
+  "dossier": "docs/bausteine/VV-ORG.md",
+  "tables": [
+    {
+      "name": "organisation",
+      "tenant_scoped": true
+    }
+  ],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-ORG.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B01-3"
+  ],
+  "module": null
+}

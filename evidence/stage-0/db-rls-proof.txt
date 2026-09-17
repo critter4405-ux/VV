@@ -1,0 +1,23 @@
+VV Stage 0 — DB-/RLS-Nachweis (PostgreSQL 16)
+Erzeugt beim Stage-0-Bau (synthetische Daten, kein Personenbezug).
+
+Migrationen 0001–0004 + Seed: fehlerfrei eingespielt.
+
+Mandantenbezogene Tabellen (rowsecurity / forcerowsecurity):
+  approval        t / t
+  audit_anchor    t / t
+  audit_log       t / t
+  organisation    t / t
+  outbox          t / t
+  person          t / t
+  role_assignment t / t
+  tenant          f / f   (Stammtabelle, korrekt NICHT tenant-scoped)
+
+Policies: je Tabelle <name>_tenant_isolation vorhanden (7/7).
+Rollen:   vv_app (NOBYPASSRLS), vv_audit_writer (NOBYPASSRLS).
+
+RLS-Isolationstest (Rolle rls_tester, NOSUPERUSER NOBYPASSRLS) — AK-08:
+  app.tenant_id = A  -> nur 3 Personen von Mandant A sichtbar
+  app.tenant_id leer -> 0 Zeilen (deny-by-default)
+  app.tenant_id = B  -> nur 1 Person von Mandant B sichtbar
+=> Kein Zugriff über Mandantengrenzen. RLS greift DB-durchgesetzt.

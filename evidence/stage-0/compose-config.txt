@@ -1,0 +1,191 @@
+name: vv
+services:
+  keycloak:
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_PASSWORD: change_me_dev_only
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_HEALTH_ENABLED: "true"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - exec 3<>/dev/tcp/localhost/8080 && echo ok >&3
+      timeout: 5s
+      interval: 10s
+      retries: 30
+    image: quay.io/keycloak/keycloak:26.0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /home/claude/vv/infra/keycloak
+        target: /opt/keycloak/data/import
+        read_only: true
+        bind: {}
+  minio:
+    command:
+      - server
+      - /data
+      - --console-address
+      - :9001
+    environment:
+      MINIO_ROOT_PASSWORD: change_me_dev_only
+      MINIO_ROOT_USER: vv_minio
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mc ready local || exit 1
+      timeout: 5s
+      interval: 10s
+      retries: 20
+    image: minio/minio:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9000
+        published: "9000"
+        protocol: tcp
+      - mode: ingress
+        target: 9001
+        published: "9001"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: miniodata
+        target: /data
+        volume: {}
+  postgres:
+    environment:
+      POSTGRES_DB: vv
+      POSTGRES_PASSWORD: change_me_dev_only
+      POSTGRES_USER: vv_app
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U vv_app -d vv
+      timeout: 5s
+      interval: 5s
+      retries: 20
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5432"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql/data
+        volume: {}
+      - type: bind
+        source: /home/claude/vv/db/migrations
+        target: /docker-entrypoint-initdb.d/00-migrations
+        read_only: true
+        bind: {}
+      - type: bind
+        source: /home/claude/vv/db/seed
+        target: /docker-entrypoint-initdb.d/10-seed
+        read_only: true
+        bind: {}
+  web:
+    build:
+      context: /home/claude/vv/apps/web
+      dockerfile: Dockerfile
+    depends_on:
+      keycloak:
+        condition: service_started
+        required: true
+      minio:
+        condition: service_started
+        required: true
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      DATABASE_URL: postgres://vv_app:change_me_dev_only@postgres:5432/vv
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: change_me_dev_only
+      KEYCLOAK_REALM: vv
+      MINIO_ROOT_PASSWORD: change_me_dev_only
+      MINIO_ROOT_USER: vv_minio
+      MODEL_API_BASE: ""
+      MODEL_API_KEY: ""
+      MODEL_PROVIDER: eu-api-stub
+      OIDC_CLIENT_ID: vv-web
+      OIDC_CLIENT_SECRET: change_me_dev_only
+      OIDC_ISSUER: http://keycloak:8080/realms/vv
+      POSTGRES_DB: vv
+      POSTGRES_HOST: postgres
+      POSTGRES_PASSWORD: change_me_dev_only
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: vv_app
+      S3_BUCKET: vv-dev
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: at-1
+      VV_DATA_MODE: synthetic
+      WORKER_CONCURRENCY: "2"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- http://localhost:3000/api/health || exit 1
+      timeout: 5s
+      interval: 10s
+      retries: 20
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+  worker:
+    build:
+      context: /home/claude/vv/apps/worker
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      DATABASE_URL: postgres://vv_app:change_me_dev_only@postgres:5432/vv
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: change_me_dev_only
+      KEYCLOAK_REALM: vv
+      MINIO_ROOT_PASSWORD: change_me_dev_only
+      MINIO_ROOT_USER: vv_minio
+      MODEL_API_BASE: ""
+      MODEL_API_KEY: ""
+      MODEL_PROVIDER: eu-api-stub
+      OIDC_CLIENT_ID: vv-web
+      OIDC_CLIENT_SECRET: change_me_dev_only
+      OIDC_ISSUER: http://keycloak:8080/realms/vv
+      POSTGRES_DB: vv
+      POSTGRES_HOST: postgres
+      POSTGRES_PASSWORD: change_me_dev_only
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: vv_app
+      S3_BUCKET: vv-dev
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: at-1
+      VV_DATA_MODE: synthetic
+      WORKER_CONCURRENCY: "2"
+    networks:
+      default: null
+networks:
+  default:
+    name: vv_default
+volumes:
+  miniodata:
+    name: vv_miniodata
+  pgdata:
+    name: vv_pgdata

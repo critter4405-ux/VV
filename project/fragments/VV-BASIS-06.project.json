@@ -1,0 +1,29 @@
+{
+  "code": "VV-BASIS-06",
+  "name": "Dokumente & Ablage",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-08"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-06.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-06.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B06-1",
+    "Q01",
+    "Q06"
+  ],
+  "module": null
+}

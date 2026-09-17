@@ -1,0 +1,29 @@
+{
+  "code": "VV-ADMIN",
+  "name": "Admin (Dach über BASIS-02/03/09 + Vereins-Config)",
+  "kind": "admin",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-04",
+    "ADR-01"
+  ],
+  "dossier": "docs/bausteine/VV-ADMIN.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-ADMIN.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "BA-1",
+    "K10"
+  ],
+  "module": null
+}

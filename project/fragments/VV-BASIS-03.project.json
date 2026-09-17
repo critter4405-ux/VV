@@ -1,0 +1,46 @@
+{
+  "code": "VV-BASIS-03",
+  "name": "Governance & Audit-Log",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-05"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-03.md",
+  "tables": [
+    {
+      "name": "audit_log",
+      "tenant_scoped": true
+    },
+    {
+      "name": "audit_anchor",
+      "tenant_scoped": true
+    },
+    {
+      "name": "outbox",
+      "tenant_scoped": true
+    },
+    {
+      "name": "approval",
+      "tenant_scoped": true
+    }
+  ],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-03.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B03-1",
+    "B03-2",
+    "Q01"
+  ],
+  "module": null
+}

@@ -1,0 +1,45 @@
+# --- Secrets & Umgebung (nie ins Repo) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+*.decrypted
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# --- Merge-/Build-Artefakte der Projektwahrheit (generiert) ---
+project/project.merged.json
+
+# --- Doku-HTML-Renderings (aus MD generiert) ---
+docs/**/*.html
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- HARTE REGEL: niemals echte/personenbezogene Daten ---
+# Reale Exporte (Vereinsplaner o.ä.) gehören NIE ins Repo.
+*_real*.csv
+*_real*.xlsx
+mitglieder*.csv
+mitglieder*.xlsx
+personen*.csv
+
+# generierte HTML-Renderings
+docs/**/*.html

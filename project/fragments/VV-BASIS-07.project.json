@@ -1,0 +1,30 @@
+{
+  "code": "VV-BASIS-07",
+  "name": "Finanz-Grundlagen",
+  "kind": "basis",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-05",
+    "ADR-06"
+  ],
+  "dossier": "docs/bausteine/VV-BASIS-07.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-BASIS-07.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "B07-1",
+    "B07-2",
+    "K27"
+  ],
+  "module": null
+}

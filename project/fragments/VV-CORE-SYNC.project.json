@@ -1,0 +1,31 @@
+{
+  "code": "VV-CORE-SYNC",
+  "name": "Datensynchronisation & Konsistenz",
+  "kind": "core",
+  "version": "0.1",
+  "status": "skeleton",
+  "gate": 0,
+  "adr": [
+    "ADR-05",
+    "ADR-06",
+    "ADR-01"
+  ],
+  "dossier": "docs/bausteine/VV-CORE-SYNC.md",
+  "tables": [],
+  "gates": [
+    {
+      "id": 0,
+      "title": "Stage 0 — Fundament-Gerüst",
+      "evidence": [
+        "evidence/stage-0/gate0-checklist.md",
+        "docs/bausteine/VV-CORE-SYNC.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "BS-1",
+    "Q05",
+    "K11"
+  ],
+  "module": null
+}
