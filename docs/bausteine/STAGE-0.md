@@ -10,7 +10,7 @@
 - **Version:** 1.0
 - **Datum:** 16.09.2026
 - **Verantwortlich:** Bau-KI (Claude Code + Opus 4.8, Aufwand hoch) · Review = Fremdmodell (Aufwand hoch)
-- **Status/Gate:** gebaut · **Gate 0 → 1** (Validatoren grün)
+- **Status/Gate:** gebaut · Vier-Augen-Review **nicht bestanden** → **repariert (WP0–WP7, 17.09.2026)** · **Gate 0→1: erneutes Fremdmodell-Review ausstehend** (siehe `REVIEW-Befunde-Stage-0.md`)
 
 ## 2. Was
 
@@ -65,6 +65,11 @@ Fragmente+Schema valide · ADR-Fragmente im Repo · Dossier-Skeletons je Baustei
 - **100 % AT-Datensouveränität**, kein US-Dienst im Datenpfad; host-agnostisch.
 - **Kein Personenbezug im Repo/CI** (Guard-Validator K31); nur synthetische Testdaten.
 - Bindendes nie autonom: Freigabe-Objekt (Vier-Augen), lückenloses Audit ab Tag 1 (K31).
+- **Nach Reparatur (WP1–WP6):** App-Rolle `vv_app` NOSUPERUSER+NOBYPASSRLS (kann RLS nicht umgehen); Tenant-Kontext transaktions-lokal; Audit append-only mit DB-seitiger, fork-freier Hash-Kette; Policy deny-by-default; OIDC-Bearer-Validierung; Least-Privilege-Secrets je Dienst.
+
+### Abgrenzung — spätere Infra-Stufe (bewusst NICHT in Stage 0)
+
+Diese ADR-08/11-Betriebskomponenten sind **spätere Infra-Stufe** (Betreiber-Entscheidung 17.09.2026), kein Stage-0-Umfang: **ClamAV**-Upload-Scan · **Backup/PITR** + **Offsite-WORM** (die Tabelle `audit_anchor` ist eine DB-Tabelle, **noch keine** echte WORM-Senke) · **Monitoring/Alerting** · **`sops`/`age`**-Secrets. Stage 0 liefert das Sicherheits-Kern-Gerüst; diese Härtungen folgen mit ADR-11 in einer eigenen Stufe.
 
 ## 7. Visual (Pflicht)
 
@@ -101,3 +106,4 @@ bevor etwas live geht — Echtbetrieb-Disziplin ab dem ersten Baustein.
 ## 9. Änderungshistorie
 
 - 16.09.2026 — Stage 0 gebaut (Startpaket-Harvest); K22 auf „Bau gestartet/Stage 0".
+- 17.09.2026 — Vier-Augen-Review (Codex + Gemini) = nicht bestanden; **Reparatur WP0–WP7** (Git-Repo, RLS-Rollentrennung, Transaktions-Wrapper, DB-seitige Audit-Kette, deny-by-default, Vier-Augen-Guards, OIDC, gehärtete Validatoren gegen echte PostgreSQL + AST, ehrliche Evidenz, Scope-Abgrenzung ADR-08/11). Erneutes Fremdmodell-Review ausstehend.

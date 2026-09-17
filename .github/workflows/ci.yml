@@ -1,5 +1,5 @@
-# VV CI — Stage 0. Build + Validatoren gate-blockierend. NUR synthetische Daten.
-# HARTE REGEL (ADR-10): niemals echte/personenbezogene Daten im Repo/CI.
+# VV CI — Stage 0. Build + Validatoren gate-blockierend. NUR synthetische Daten (ADR-10).
+# TODO Supply-Chain-Härtung (WP6-Rest): Actions auf Commit-SHA pinnen, Container-Images auf Digest.
 name: vv-ci
 
 on:
@@ -7,62 +7,94 @@ on:
     branches: [ main, "stage-*", "feat/**" ]
   pull_request:
 
-# Gate-blockierend: schlägt ein Job fehl, ist das Gate ROT.
 jobs:
   validators:
-    name: ADR-Validatoren (Gate 0→1)
+    name: ADR-Validatoren statisch (Gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Abhängigkeiten
-        run: python -m pip install -r validators/requirements.txt
-      - name: Datenschutz-Guard — kein .env / keine echten Daten im Repo
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with: { python-version: "3.12" }
+      - name: Kein .env committet?
         run: |
-          if git ls-files | grep -E '(^|/)\.env$'; then
-            echo "::error::.env darf nicht committet sein"; exit 1
-          fi
-          echo "OK: kein .env committet."
-      - name: Validatoren ausführen (gate-blockierend)
-        run: python -m validators.validate
-      - name: Evidenz-Report als Artefakt
+          if git ls-files | grep -E '(^|/)\.env$'; then echo "::error::.env committet"; exit 1; fi
+          echo "OK"
+      - run: python -m pip install -r validators/requirements.txt
+      - run: python -m validators.validate
+      - uses: actions/upload-artifact@v4.4.3
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: validator-report
-          path: evidence/stage-0/validator-report.json
+        with: { name: validator-report, path: evidence/stage-0/validator-report.json }
+
+  db-integration:
+    name: Live-DB: Migrationen + RLS gegen echte PostgreSQL (Gate)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vv_bootstrap
+          POSTGRES_PASSWORD: change_me_dev_only
+          POSTGRES_DB: vv
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd "pg_isready -U vv_bootstrap -d vv" --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      PGPASSWORD: change_me_dev_only
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with: { python-version: "3.12" }
+      - run: python -m pip install -r validators/requirements.txt
+      - name: Migrationen + Seed einspielen (Bootstrap-Superuser)
+        run: |
+          for f in db/migrations/*.sql db/seed/*.sql; do
+            echo "-> $f"; psql -v ON_ERROR_STOP=1 -h localhost -U vv_bootstrap -d vv -f "$f"
+          done
+          psql -h localhost -U vv_bootstrap -d vv -c "ALTER ROLE vv_app PASSWORD 'change_me_dev_only';"
+      - name: Validatoren im LIVE-Modus (gate-blockierend)
+        env:
+          VV_VALIDATE_DSN: "host=localhost dbname=vv user=vv_app password=change_me_dev_only"
+        run: python -m validators.validate
+      - name: RLS-Gegenprobe als vv_app (ohne Kontext -> 0 Zeilen)
+        run: |
+          N=$(PGPASSWORD=change_me_dev_only psql -tA -h localhost -U vv_app -d vv -c "SELECT count(*) FROM person")
+          echo "sichtbar ohne Tenant-Kontext: $N"; test "$N" = "0"
+
+  typecheck-web:
+    name: Typecheck Web/API
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with: { node-version: "22" }
+      - run: npm ci
+      - run: npm run typecheck
+
+  typecheck-worker:
+    name: Typecheck Worker
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/worker } }
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with: { node-version: "22" }
+      - run: npm ci
+      - run: npm run typecheck
 
   compose-config:
     name: docker compose config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Compose-Konfiguration validieren
-        run: |
-          cp .env.example .env
-          docker compose config > /dev/null
-          echo "OK: docker-compose.yml ist gültig."
+      - uses: actions/checkout@v4.2.2
+      - run: cp .env.example .env && docker compose config > /dev/null && echo OK
 
-  build-web:
-    name: Typecheck Web/API
+  secret-scan:
+    name: Secret-Scan (gitleaks)
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: apps/web } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "22" }
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-
-  build-worker:
-    name: Typecheck Worker
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: apps/worker } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "22" }
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
+      - uses: actions/checkout@v4.2.2
+        with: { fetch-depth: 0 }
+      # TODO auf Commit-SHA pinnen.
+      - uses: gitleaks/gitleaks-action@v2

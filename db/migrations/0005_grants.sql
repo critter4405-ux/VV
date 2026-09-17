@@ -11,3 +11,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON person, organisation, role_assignment, o
 GRANT SELECT, INSERT ON audit_log, audit_anchor TO vv_app;
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO vv_app;
+
+-- Outbox-Consumer-Funktionen (SECURITY DEFINER, 0003): nur EXECUTE, kein Direktzugriff.
+GRANT EXECUTE ON FUNCTION vv_outbox_claim(int) TO vv_app;
+GRANT EXECUTE ON FUNCTION vv_outbox_done(uuid) TO vv_app;

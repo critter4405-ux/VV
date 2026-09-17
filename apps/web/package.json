@@ -3,13 +3,14 @@
   "version": "0.0.0-stage0",
   "private": true,
   "type": "module",
-  "description": "VV modularer Monolith (Web/API) — Stage-0-Skeleton. Voller Next.js/TS/Tailwind/shadcn-Layer folgt in späteren Stufen.",
+  "description": "VV modularer Monolith (Web/API) — Stage-0-Skeleton.",
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "jose": "^5.9.6",
     "pg": "^8.13.0",
     "tsx": "^4.19.0"
   },

@@ -1,48 +1,77 @@
-"""K29: je Baustein ein vollständiges 9-teiliges Bau-Dossier + Mermaid-Diagramm.
-
-Prüft Vorhandensein + Minimum (alle 9 Abschnitte, ein Mermaid-Block, ein
-Evidenz-/Test-Link) — nicht die Wortmenge."""
+"""K29: 9-teiliges Bau-Dossier + Mermaid je Baustein. WP5-gehärtet (Review Gemini E / Codex #14):
+- Status-bewusst: 'skeleton' darf Platzhalter haben (Stage 0 = Gerüst); ab 'in_bau'/'geprueft'/
+  'freigegeben' wird Mindest-Inhalt je Abschnitt verlangt (kein Durchwinken von Dummy-Text).
+- Mermaid-Grundsyntax wird geprüft (Block nicht leer, enthält Diagrammtyp/Kante).
+- Evidenz-Link muss auf existierende Datei zeigen (kein toter Link).
+"""
 from __future__ import annotations
 import re
 from pathlib import Path
 from ..common import REPO, CheckResult, Finding, load_fragments
 
-# erwartete Abschnittsnummern 1..9
-SECTIONS = [
-    "Kopf", "Was", "Warum", "Wie umgesetzt", "Wie getestet",
-    "Sicherheit", "Visual", "Nutzen", "Änderungshistorie",
-]
+PLACEHOLDER = re.compile(r"\(zu füllen beim Bau\)", re.IGNORECASE)
+LINK = re.compile(r"\]\(([^)]+)\)")
 
 
-def _check_md(path: Path) -> list[str]:
+def _mermaid_ok(text: str) -> bool:
+    m = re.search(r"```mermaid\s*(.+?)```", text, re.DOTALL)
+    if not m:
+        return False
+    body = m.group(1).strip()
+    return bool(body) and bool(re.search(r"\b(flowchart|graph|sequenceDiagram|classDiagram)\b", body)) \
+        and ("-->" in body or "->>" in body or "---" in body)
+
+
+def _check(path: Path, require_content: bool) -> list[str]:
     problems: list[str] = []
     text = path.read_text(encoding="utf-8")
+    # 9 Abschnitte + Inhalt dazwischen
+    positions = []
     for n in range(1, 10):
-        if not re.search(rf"^##\s*{n}\.", text, re.MULTILINE):
-            problems.append(f"Abschnitt {n} fehlt")
-    if "```mermaid" not in text:
-        problems.append("Mermaid-Diagramm fehlt (Abschnitt 7 Pflicht)")
-    # Test-/Evidenz-Verlinkung (knapp + verlinkt statt kopiert)
-    if not re.search(r"\]\((?:\.\./)*evidence/", text):
-        problems.append("kein Evidenz-/Test-Link (Abschnitt 5)")
+        m = re.search(rf"^##\s*{n}\.\s*(.+)$", text, re.MULTILINE)
+        if not m:
+            problems.append(f"Abschnitt {n} fehlt"); positions.append(None)
+        else:
+            positions.append(m.start())
+    if not _mermaid_ok(text):
+        problems.append("Mermaid fehlt oder Syntax unbrauchbar")
+    # Evidenz-Link existiert?
+    ev = [l for l in LINK.findall(text) if "evidence/" in l]
+    if not ev:
+        problems.append("kein Evidenz-Link (Abschnitt 5)")
+    else:
+        for rel in ev:
+            target = (path.parent / rel.split("#")[0]).resolve()
+            if not target.exists():
+                problems.append(f"toter Evidenz-Link: {rel}")
+    if require_content:
+        # zwischen aufeinanderfolgenden Headern muss echter Inhalt stehen (kein Platzhalter).
+        idx = [p for p in positions if p is not None] + [len(text)]
+        for a, b in zip(idx, idx[1:]):
+            seg = text[a:b]
+            seg_body = re.sub(r"^##.*$", "", seg, flags=re.MULTILINE).strip()
+            if PLACEHOLDER.search(seg_body) or len(re.sub(r"\s+", "", seg_body)) < 20:
+                problems.append("Abschnitt mit Platzhalter/zu wenig Inhalt (Status ≥ in_bau verlangt echten Inhalt)")
+                break
     return problems
 
 
 def run() -> CheckResult:
-    res = CheckResult(name="9-teiliges Bau-Dossier + Mermaid je Baustein", adr="K29")
+    res = CheckResult(name="9-teiliges Bau-Dossier + Mermaid (status-bewusst)", adr="K29")
     frags = load_fragments()
-    # Stage-0-Kurzdossier zusätzlich prüfen
-    targets = [(f.get("code"), REPO / f["dossier"]) for f in frags]
-    stage0 = REPO / "docs" / "bausteine" / "STAGE-0.md"
-    if stage0.exists():
-        targets.append(("VV-STAGE-0", stage0))
-    for code, path in targets:
+    seen = set()
+    for f in frags:
+        code = f.get("code"); path = REPO / f["dossier"]
+        seen.add(str(path))
+        require = f.get("status") not in ("skeleton", None)
         if not path.exists():
-            res.findings.append(Finding("K29", False, f"{code}: Dossier fehlt ({path.name})"))
-            continue
-        problems = _check_md(path)
-        if problems:
-            res.findings.append(Finding("K29", False, f"{code}: " + "; ".join(problems)))
-        else:
-            res.findings.append(Finding("K29", True, f"{code}: 9 Abschnitte + Mermaid + Evidenz-Link"))
+            res.findings.append(Finding("K29", False, f"{code}: Dossier fehlt")); continue
+        probs = _check(path, require)
+        res.findings.append(Finding("K29", not probs,
+            f"{code}: " + ("; ".join(probs) if probs else ("9 Abschnitte + Mermaid + Evidenz"
+            + (" + Inhalt" if require else " (Skeleton)")))))
+    stage0 = REPO / "docs" / "bausteine" / "STAGE-0.md"
+    if stage0.exists() and str(stage0) not in seen:
+        probs = _check(stage0, require_content=True)   # STAGE-0 ist ein echtes Dossier
+        res.findings.append(Finding("K29", not probs, "VV-STAGE-0: " + ("; ".join(probs) if probs else "vollständig + Mermaid + Evidenz")))
     return res

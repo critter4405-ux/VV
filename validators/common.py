@@ -43,3 +43,31 @@ def load_fragments() -> list[dict]:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+import re as _re
+
+
+def strip_sql_comments(sql: str) -> str:
+    """Entfernt -- Zeilen- und /* */ Blockkommentare (verhindert Kommentar-Trick)."""
+    sql = _re.sub(r"/\*.*?\*/", " ", sql, flags=_re.DOTALL)
+    sql = _re.sub(r"--[^\n]*", " ", sql)
+    return sql
+
+
+def strip_ts_comments(src: str) -> str:
+    """Entfernt nur // und /* */ Kommentare (String-Literale bleiben — für Import-Pfad-Analyse)."""
+    src = _re.sub(r"/\*.*?\*/", " ", src, flags=_re.DOTALL)
+    src = _re.sub(r"//[^\n]*", " ", src)
+    return src
+
+
+def strip_ts_comments_strings(src: str) -> str:
+    """Entfernt // und /* */ Kommentare und String-/Template-Literale (grob, für Import-Analyse)."""
+    src = _re.sub(r"/\*.*?\*/", " ", src, flags=_re.DOTALL)
+    src = _re.sub(r"//[^\n]*", " ", src)
+    # Strings maskieren, damit z.B. "checkPolicy(" in einem String nicht zählt.
+    src = _re.sub(r"'(?:\\.|[^'\\])*'", "''", src)
+    src = _re.sub(r'"(?:\\.|[^"\\])*"', '""', src)
+    src = _re.sub(r"`(?:\\.|[^`\\])*`", "``", src)
+    return src

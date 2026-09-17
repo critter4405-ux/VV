@@ -1,34 +1,43 @@
-// VV Agenten-/Job-Worker — Stage-0-Einstieg (ADR-06: pg-boss).
-// Idempotente Jobs; kein Job überschreitet autonom eine harte Grenze — er bereitet
-// vor und legt ein Freigabe-Objekt an. Stage-0: Boot + Beispiel-Job (Terminerinnerung
-// als Trivial-Routine unter stehender Klasse-Freigabe, B09-1).
+// VV Agenten-/Job-Worker — Stage-0-Einstieg (ADR-06), WP4.
+// pg-boss für getriggerte Jobs + realer Outbox-Consumer (FOR UPDATE SKIP LOCKED via
+// SECURITY-DEFINER-Funktion). Kein Job überschreitet autonom eine harte Grenze — er legt
+// ein Freigabe-Objekt an (Vier-Augen, siehe agents/vier_augen.ts).
 import PgBoss from "pg-boss";
 import { writeFileSync } from "node:fs";
+import { claimOutbox, markOutboxDone } from "./db.ts";
 
-// Heartbeat für den Compose-Healthcheck (WP4/Review #11): Datei je Tick berühren.
 function beat() {
   try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
+}
+
+async function pollOutbox() {
+  try {
+    const rows = await claimOutbox(10);
+    for (const row of rows) {
+      // Stage-0: nur protokollieren (Zustellung/Agentenlogik folgt beim Modul-Bau).
+      console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
+      await markOutboxDone(row.id);
+    }
+  } catch (err) {
+    console.error("[vv-worker] outbox poll error:", err);
+  }
 }
 
 async function main() {
   const boss = new PgBoss({ connectionString: process.env.DATABASE_URL });
   boss.on("error", (err) => console.error("[vv-worker] pg-boss error:", err));
   await boss.start();
-  beat();
-  setInterval(beat, 30_000);
 
   const QUEUE = "reminder.dispatch";
   await boss.createQueue(QUEUE);
-
   await boss.work(QUEUE, async ([job]) => {
-    // Trivial-Routine (kein Personenbezug nach außen) — läuft ohne Einzel-Freigabe.
-    console.log("[vv-worker] reminder job", job.id);
+    console.log("[vv-worker] reminder job", job.id); // Trivial-Routine (stehende Klasse-Freigabe, B09-1)
   });
 
-  console.log("[vv-worker] Stage-0-Skeleton bereit (pg-boss).");
+  beat();
+  setInterval(beat, 30_000);
+  setInterval(pollOutbox, 5_000);
+  console.log("[vv-worker] Stage-0-Skeleton bereit (pg-boss + Outbox-Consumer).");
 }
 
-main().catch((err) => {
-  console.error("[vv-worker] Startfehler:", err);
-  process.exit(1);
-});
+main().catch((err) => { console.error("[vv-worker] Startfehler:", err); process.exit(1); });

@@ -63,7 +63,16 @@ services:
   web:
     build:
       context: ./apps/web
-    env_file: .env
+    # Least-Privilege (Review Codex #10): Web bekommt NUR seine Secrets — kein Keycloak-Admin,
+    # kein MinIO-Root, kein Postgres-Bootstrap-Passwort.
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +91,15 @@ services:
   worker:
     build:
       context: ./apps/worker
-    env_file: .env
+    # Eigene technische Identität (vv-worker), keine Web-/Admin-/Root-Secrets.
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      WORKER_OIDC_CLIENT_ID: ${WORKER_OIDC_CLIENT_ID}
+      WORKER_OIDC_CLIENT_SECRET: ${WORKER_OIDC_CLIENT_SECRET}
+      MODEL_PROVIDER: ${MODEL_PROVIDER}
+      MODEL_API_BASE: ${MODEL_API_BASE}
+      MODEL_API_KEY: ${MODEL_API_KEY}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY}
     depends_on:
       postgres:
         condition: service_healthy

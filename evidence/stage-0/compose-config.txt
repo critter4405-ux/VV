@@ -118,31 +118,12 @@ services:
         required: true
     environment:
       DATABASE_URL: postgres://vv_app:change_me_dev_only@postgres:5432/vv
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: change_me_dev_only
-      KEYCLOAK_REALM: vv
-      MINIO_ROOT_PASSWORD: change_me_dev_only
-      MINIO_ROOT_USER: vv_minio
-      MODEL_API_BASE: ""
-      MODEL_API_KEY: ""
-      MODEL_PROVIDER: eu-api-stub
       OIDC_CLIENT_ID: vv-web
       OIDC_CLIENT_SECRET: change_me_dev_only
       OIDC_ISSUER: http://keycloak:8080/realms/vv
-      POSTGRES_DB: vv
-      POSTGRES_HOST: postgres
-      POSTGRES_PASSWORD: change_me_dev_only
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: vv_bootstrap
       S3_BUCKET: vv-dev
       S3_ENDPOINT: http://minio:9000
       S3_REGION: at-1
-      VV_APP_PASSWORD: change_me_dev_only
-      VV_APP_USER: vv_app
-      VV_DATA_MODE: synthetic
-      WORKER_CONCURRENCY: "2"
-      WORKER_OIDC_CLIENT_ID: vv-worker
-      WORKER_OIDC_CLIENT_SECRET: change_me_dev_only
     healthcheck:
       test:
         - CMD-SHELL
@@ -167,28 +148,9 @@ services:
         required: true
     environment:
       DATABASE_URL: postgres://vv_app:change_me_dev_only@postgres:5432/vv
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: change_me_dev_only
-      KEYCLOAK_REALM: vv
-      MINIO_ROOT_PASSWORD: change_me_dev_only
-      MINIO_ROOT_USER: vv_minio
       MODEL_API_BASE: ""
       MODEL_API_KEY: ""
       MODEL_PROVIDER: eu-api-stub
-      OIDC_CLIENT_ID: vv-web
-      OIDC_CLIENT_SECRET: change_me_dev_only
-      OIDC_ISSUER: http://keycloak:8080/realms/vv
-      POSTGRES_DB: vv
-      POSTGRES_HOST: postgres
-      POSTGRES_PASSWORD: change_me_dev_only
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: vv_bootstrap
-      S3_BUCKET: vv-dev
-      S3_ENDPOINT: http://minio:9000
-      S3_REGION: at-1
-      VV_APP_PASSWORD: change_me_dev_only
-      VV_APP_USER: vv_app
-      VV_DATA_MODE: synthetic
       WORKER_CONCURRENCY: "2"
       WORKER_OIDC_CLIENT_ID: vv-worker
       WORKER_OIDC_CLIENT_SECRET: change_me_dev_only

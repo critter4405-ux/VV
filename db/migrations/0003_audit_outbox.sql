@@ -79,3 +79,27 @@ ALTER TABLE outbox FORCE ROW LEVEL SECURITY;
 CREATE POLICY outbox_tenant_isolation ON outbox
     USING (tenant_id = vv_current_tenant())
     WITH CHECK (tenant_id = vv_current_tenant());
+
+-- Outbox-Consumer (WP4/Review Codex #13): mandantenübergreifende Zustellung durch den Worker.
+-- SECURITY DEFINER (Eigentümer = Bootstrap), damit der Worker über RLS hinweg zustellen kann,
+-- OHNE der App-Rolle BYPASSRLS zu geben. Atomarer Claim per FOR UPDATE SKIP LOCKED + Leasing.
+CREATE OR REPLACE FUNCTION vv_outbox_claim(max_rows int DEFAULT 10)
+RETURNS SETOF outbox LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE outbox SET locked_until = now() + interval '1 minute'
+  WHERE id IN (
+    SELECT id FROM outbox
+    WHERE processed_at IS NULL AND (locked_until IS NULL OR locked_until < now())
+    ORDER BY created_at
+    FOR UPDATE SKIP LOCKED
+    LIMIT max_rows)
+  RETURNING *;
+$$;
+
+CREATE OR REPLACE FUNCTION vv_outbox_done(p_id uuid)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE outbox SET processed_at = now(), locked_until = NULL WHERE id = p_id;
+$$;
+
+REVOKE ALL ON FUNCTION vv_outbox_claim(int) FROM PUBLIC;
+REVOKE ALL ON FUNCTION vv_outbox_done(uuid) FROM PUBLIC;
+-- EXECUTE-Grants an vv_app folgen in 0005 (nach Rollen-Existenz).

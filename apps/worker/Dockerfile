@@ -1,7 +1,7 @@
-# VV Agenten-/Job-Worker — Stage-0-Skeleton (ADR-02/06/10). Läuft via tsx.
+# VV Agenten-/Job-Worker — Stage-0-Skeleton (ADR-02/06/10). Reproduzierbar via npm ci.
 FROM node:22-alpine
 WORKDIR /app
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY . .
 CMD ["npm", "start"]

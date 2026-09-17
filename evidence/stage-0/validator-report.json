@@ -1,6 +1,7 @@
 {
-  "generated_at": "2026-09-17T17:24:32.565294+00:00",
+  "generated_at": "2026-09-17T17:58:30.094593+00:00",
   "stage": 0,
+  "live_db": false,
   "checks": [
     {
       "adr": "ADR-09",
@@ -88,55 +89,55 @@
     },
     {
       "adr": "ADR-01",
-      "name": "RLS + Policy je mandantenbezogener Tabelle",
+      "name": "RLS FORCE + Policy je mandantenbezogener Tabelle",
       "passed": true,
       "findings": [
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "person: RLS + Policy vorhanden"
+          "detail": "approval: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "organisation: RLS + Policy vorhanden"
+          "detail": "audit_anchor: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "role_assignment: RLS + Policy vorhanden"
+          "detail": "audit_log: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "audit_log: RLS + Policy vorhanden"
+          "detail": "organisation: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "audit_anchor: RLS + Policy vorhanden"
+          "detail": "outbox: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "outbox: RLS + Policy vorhanden"
+          "detail": "person: ENABLE+FORCE+Policy"
         },
         {
           "rule": "ADR-01",
           "ok": true,
-          "detail": "approval: RLS + Policy vorhanden"
+          "detail": "role_assignment: ENABLE+FORCE+Policy"
         }
       ]
     },
     {
       "adr": "ADR-02",
-      "name": "Keine verbotenen Cross-Modul-Imports",
+      "name": "Keine verbotenen Cross-Modul-Imports (inkl. dynamisch)",
       "passed": true,
       "findings": [
         {
           "rule": "ADR-02",
           "ok": true,
-          "detail": "3 Module, keine verbotenen Cross-Modul-Imports"
+          "detail": "3 Module, keine verbotenen Cross-Modul-Imports (statisch/dynamisch)"
         }
       ]
     },
@@ -158,79 +159,121 @@
       ]
     },
     {
+      "adr": "ADR-09",
+      "name": "project.json ↔ reale Tabellen (Abgleich)",
+      "passed": true,
+      "findings": [
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "approval: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "audit_anchor: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "audit_log: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "organisation: deklariert in VV-ORG"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "outbox: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "person: deklariert in VV-BASIS-01"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "detail": "role_assignment: deklariert in VV-BASIS-02"
+        }
+      ]
+    },
+    {
       "adr": "K29",
-      "name": "9-teiliges Bau-Dossier + Mermaid je Baustein",
+      "name": "9-teiliges Bau-Dossier + Mermaid (status-bewusst)",
       "passed": true,
       "findings": [
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-ADMIN: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-ADMIN: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-01: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-01: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-02: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-02: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-03: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-03: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-04: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-04: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-05: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-05: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-06: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-06: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-07: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-07: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-08: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-08: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-09: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-09: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-BASIS-10: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-BASIS-10: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-CORE-SYNC: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-CORE-SYNC: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-ORG: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-ORG: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
         },
         {
           "rule": "K29",
           "ok": true,
-          "detail": "VV-STAGE-0: 9 Abschnitte + Mermaid + Evidenz-Link"
+          "detail": "VV-STAGE-0: vollständig + Mermaid + Evidenz"
         }
       ]
     },
@@ -379,12 +422,24 @@
         {
           "rule": "K31",
           "ok": true,
-          "detail": ".env.example: VV_DATA_MODE=synthetic gesetzt"
+          "detail": ".env.example: VV_DATA_MODE=synthetic"
         },
         {
           "rule": "K31",
           "ok": true,
-          "detail": "kein Personenbezug-Muster im Repo gefunden"
+          "detail": "kein Personenbezug-Muster gefunden (alle Textdateien inkl. csv/json)"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-01",
+      "name": "LIVE: RLS/Rollen effektiv (echte PostgreSQL)",
+      "passed": true,
+      "findings": [
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "detail": "übersprungen: kein VV_VALIDATE_DSN (in CI erzwungen)"
         }
       ]
     }
