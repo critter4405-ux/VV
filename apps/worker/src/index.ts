@@ -24,7 +24,8 @@ async function pollOutbox() {
 }
 
 async function main() {
-  const boss = new PgBoss({ connectionString: process.env.DATABASE_URL });
+  // pg-boss im eigenen Schema (Eigentümer vv_worker) — kein DB-weites CREATE nötig (Codex #3-new).
+  const boss = new PgBoss({ connectionString: process.env.WORKER_DATABASE_URL, schema: "pgboss" });
   boss.on("error", (err) => console.error("[vv-worker] pg-boss error:", err));
   await boss.start();
 

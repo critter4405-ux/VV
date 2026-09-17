@@ -6,7 +6,8 @@
   "description": "VV Agenten-/Job-Worker (pg-boss) — Stage-0-Skeleton (ADR-06/07).",
   "scripts": {
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "pg": "^8.13.0",

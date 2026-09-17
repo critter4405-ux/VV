@@ -74,3 +74,43 @@
 
 - Fachmodule (M##), Agenten-Fachlogik, Live-Bank/SEPA, Prod-Deploys, echte Daten.
 - ADR-08/11-Betriebskomponenten (spätere Infra-Stufe, s. WP7).
+
+---
+
+# Runde 2 — 2. Fremdmodell-Review des reparierten Stands (17.09.2026)
+
+> **Codex (GPT-5.6 Sol, high) = „nicht bestanden"** · **Gemini (3.1 Pro, high) = „bestanden mit Auflagen"**.
+> Beide gegen den reparierten Stand (WP0–WP7). Konsolidiert, dedupliziert. Gate blieb gesperrt.
+> Reaktion: **eine konsolidierte Reparaturrunde 2 (F1–F8)** durch die Bau-KI, gegen echte
+> PostgreSQL 16 + adversarial verifiziert (`evidence/stage-0/round2-verification.md`).
+
+## Befunde Runde 2 → Fix (F#)
+
+| F | Schwere | Befund (Herkunft) | Fix | Verifiziert |
+|---|---------|-------------------|-----|-------------|
+| **F1** | **CRITICAL** | Vier-Augen über `binding:false` durch Aufrufer umgehbar — `assertExecutable` übersprang Reviewer/Zustand/Token (Codex #7, aus Reparaturrunde 1 stammend) | `binding` server-seitig aus Aktion+Datenklasse klassifiziert (`isBinding`), kein Aufrufer-Flag mehr; nicht-bindend nur unter registrierter stehender Klasse-Freigabe (fail-closed); ausführbarer Adversarial-Test | 5/5 Tests, Umgehung ROT |
+| **F2** | hoch | Outbox-`EXECUTE` an `vv_app`; Web & Worker teilten eine Rolle (Codex #4-new, Gemini #1) | eigene Rolle `vv_worker`; EXECUTE nur `vv_worker`, von `vv_app` entzogen; Worker verbindet als `vv_worker` (`WORKER_DATABASE_URL`) | `vv_app` → permission denied; `vv_worker` → ok |
+| **F3** | hoch | pg-boss brauchte DB-weites `CREATE SCHEMA`, `vv_app` fehlte es (Codex #3-new) | Schema `pgboss AUTHORIZATION vv_worker` DB-seitig; PgBoss mit `schema:'pgboss'` | Eigentümer `vv_worker` bestätigt |
+| **F4** | hoch | Audit-Hash ließ `id` aus, Pipe-Verkettung nicht injektiv, kein TRUNCATE-Block (Codex #6-new, Gemini #2) | Hash über `jsonb_build_object(...)` inkl. `id`+`prev_hash` (kanonisch); `BEFORE TRUNCATE`-Trigger | Kette+Reproduktion inkl. id = t/t; TRUNCATE auch für Eigentümer blockiert |
+| **F5** | hoch | Validatoren-Scheinsicherheit: dyn. Import umging ADR-02, ignorierte Policy-Entscheidung umging ADR-04, „Live übersprungen" zählte als PASS, Mermaid nur Muster (Codex #5-new) | adr02 verbietet dyn. `import()` mit Nicht-Literal (fail-closed); adr04 verlangt negativen Guard vor Write + explizite Datei-Allowlist; `db_live` SKIPPED≠PASS, `VV_REQUIRE_LIVE` erzwingt FAIL; Mermaid strukturell | alle vier Umgehungen ROT; LIVE-Gate 8/8 |
+| **F6** | hoch | Keycloak-Realm ohne Mapper für `tenant_id`/`roles`/Audience — Token passte nicht zu `auth.ts` (Codex #10) | Mapper `tenant_id`/`roles-flat`/`aud-vv-web` + synthetischer Demo-User | Realm-JSON valide; **Live-Token-Test offen** (kein KC im Sandbox) |
+| **F7** | mittel | `ALTER ROLE ... PASSWORD '${VAR}'` string-interpoliert (Quoting/Injection) (Codex #7-new) | psql-Variable + `format('%L', :'pw')` + `\gexec` (init + CI) | Heredoc/`-f -`-Form verifiziert |
+| **F8** | mittel | Guard entpackte XLSX/ZIP nicht (Codex #8-new) | ZIP-Container öffnen, innere XML/Text scannen (maskiert) | K31 grün |
+
+## Auflagen aus Gemini „bestanden mit Auflagen"
+
+- Gemini #1 (Rollentrennung) = **F2** erledigt. Gemini #2 (kanonischer Hash) = **F4** erledigt.
+- Gemini #3 (RBAC-Rollen in `policy.ts` durchsetzen) = **bewusst Stage-1** (RBAC-Matrix als Daten in Postgres beim Modul-Bau).
+- Gemini #4 (adr04 vertraute ganzem `platform/`) = in **F5** erledigt (explizite Datei-Allowlist statt Ordner).
+
+## Bewusst Stage-1 / dokumentierte Residuen (nicht Stage-0-Gate)
+
+- Keycloak-Token-Integrationstest gegen laufendes KC (F6) — CI mit KC-Service / Prüfer.
+- DB-Pool als typisierte Unit-of-Work statt freiem Export (Codex #5-Rest) — Invariante via adr04-Check abgesichert.
+- Supply-Chain-Pinning: Actions auf Commit-SHA, Images auf Digest (Codex #16).
+
+## Status nach Runde 2
+
+Bau-KI-seitig F1–F8 umgesetzt und gegen **echte PostgreSQL 16 + adversarial** verifiziert
+(`evidence/stage-0/round2-verification.md`). **Gate 0→1 bleibt gesperrt** bis zum **3.
+Fremdmodell-Review** (Codex + Gemini gegen diesen Stand) **und Betreiber-Freigabe**.

@@ -13,13 +13,35 @@ PLACEHOLDER = re.compile(r"\(zu füllen beim Bau\)", re.IGNORECASE)
 LINK = re.compile(r"\]\(([^)]+)\)")
 
 
-def _mermaid_ok(text: str) -> bool:
+def _mermaid_problem(text: str) -> str | None:
+    """Strengere Mermaid-Grundprüfung (Review-Runde 2, Codex #5-new: vorher nur Muster).
+    Gibt None zurück, wenn ok, sonst eine kurze Fehlerbeschreibung."""
     m = re.search(r"```mermaid\s*(.+?)```", text, re.DOTALL)
     if not m:
-        return False
+        return "Mermaid-Block fehlt"
     body = m.group(1).strip()
-    return bool(body) and bool(re.search(r"\b(flowchart|graph|sequenceDiagram|classDiagram)\b", body)) \
-        and ("-->" in body or "->>" in body or "---" in body)
+    if not body:
+        return "Mermaid-Block leer"
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
+    if not re.match(r"^(flowchart|graph)\s+(TB|TD|BT|LR|RL)\b|^(sequenceDiagram|classDiagram|stateDiagram(-v2)?)\b", lines[0]):
+        return "erste Zeile ist keine gültige Mermaid-Direktive"
+    is_flow = bool(re.match(r"^(flowchart|graph)\b", lines[0]))
+    if is_flow:
+        # subgraph/end müssen balanciert sein.
+        opens = sum(1 for ln in lines if re.match(r"^subgraph\b", ln))
+        closes = sum(1 for ln in lines if ln == "end")
+        if opens != closes:
+            return f"unbalancierte subgraph/end ({opens} subgraph vs. {closes} end)"
+        if not re.search(r"-->|---|-\.->|==>", body):
+            return "keine gültige Kante (-->/---/==>) im Flowchart"
+    elif lines[0].startswith("sequenceDiagram"):
+        if "->>" not in body and "-->>" not in body:
+            return "keine Nachricht (->>/-->>) im Sequenzdiagramm"
+    return None
+
+
+def _mermaid_ok(text: str) -> bool:
+    return _mermaid_problem(text) is None
 
 
 def _check(path: Path, require_content: bool) -> list[str]:
@@ -33,8 +55,9 @@ def _check(path: Path, require_content: bool) -> list[str]:
             problems.append(f"Abschnitt {n} fehlt"); positions.append(None)
         else:
             positions.append(m.start())
-    if not _mermaid_ok(text):
-        problems.append("Mermaid fehlt oder Syntax unbrauchbar")
+    mp = _mermaid_problem(text)
+    if mp:
+        problems.append(f"Mermaid: {mp}")
     # Evidenz-Link existiert?
     ev = [l for l in LINK.findall(text) if "evidence/" in l]
     if not ev:

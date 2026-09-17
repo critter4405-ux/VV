@@ -2,7 +2,10 @@
 End-Zustand einer echten PostgreSQL (pg_class/pg_policy/pg_roles), nicht am Text.
 
 Läuft, wenn VV_VALIDATE_DSN auf eine bereits migrierte DB zeigt (in CI gesetzt -> gate-blockierend).
-Ohne DSN wird der Check als 'übersprungen' markiert (lokal nicht blockierend; CI erzwingt ihn).
+Ohne DSN:
+  - VV_REQUIRE_LIVE gesetzt (CI/Gate)  -> FAIL (ein übersprungener Live-Check ist im Gate KEIN PASS)
+  - sonst (lokal)                      -> SKIPPED (weder pass noch fail, klar ausgewiesen)
+Review-Runde 2, Codex #5-new: „Live übersprungen" durfte bisher als erfolgreicher Check zählen.
 """
 from __future__ import annotations
 import os
@@ -13,7 +16,13 @@ def run() -> CheckResult:
     res = CheckResult(name="LIVE: RLS/Rollen effektiv (echte PostgreSQL)", adr="ADR-01")
     dsn = os.environ.get("VV_VALIDATE_DSN")
     if not dsn:
-        res.findings.append(Finding("ADR-01", True, "übersprungen: kein VV_VALIDATE_DSN (in CI erzwungen)"))
+        if os.environ.get("VV_REQUIRE_LIVE"):
+            res.findings.append(Finding("ADR-01", False,
+                "VV_REQUIRE_LIVE gesetzt, aber kein VV_VALIDATE_DSN — Live-Check im Gate PFLICHT (kein stiller PASS)"))
+        else:
+            res.findings.append(Finding("ADR-01", False,
+                "übersprungen: kein VV_VALIDATE_DSN (lokal; im Gate via VV_REQUIRE_LIVE erzwungen)",
+                skipped=True))
         return res
     try:
         import psycopg  # type: ignore

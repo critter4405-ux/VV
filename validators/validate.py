@@ -61,24 +61,42 @@ def main() -> int:
     print("VV Gate-Validator (Stage 0) — ADR-Invarianten gate-blockierend")
     print("=" * 74)
     total_fail = 0
+    total_skip = 0
     report = {"generated_at": datetime.now(timezone.utc).isoformat(), "stage": 0,
-              "live_db": bool(os.environ.get("VV_VALIDATE_DSN")), "checks": []}
+              "live_db": bool(os.environ.get("VV_VALIDATE_DSN")),
+              "require_live": bool(os.environ.get("VV_REQUIRE_LIVE")), "checks": []}
     for c in checks:
         nfail = len(c.failed); total_fail += nfail
-        print(f"[{'PASS' if c.passed else 'FAIL'}] {c.adr:<7} {c.name}  ({len(c.findings)-nfail}/{len(c.findings)} ok)")
+        if c.is_skipped:
+            status = "SKIP"; total_skip += 1
+        elif c.passed:
+            status = "PASS"
+        else:
+            status = "FAIL"
+        print(f"[{status}] {c.adr:<7} {c.name}  ({len(c.findings)-nfail}/{len(c.findings)} ok)")
         for f in c.failed:
             print(f"        x {f.detail}")
-        report["checks"].append({"adr": c.adr, "name": c.name, "passed": c.passed,
-            "findings": [{"rule": f.rule, "ok": f.ok, "detail": f.detail} for f in c.findings]})
+        for f in c.skipped_findings:
+            print(f"        ~ übersprungen: {f.detail}")
+        report["checks"].append({"adr": c.adr, "name": c.name,
+            "status": status.lower(), "passed": c.passed, "skipped": c.is_skipped,
+            "findings": [{"rule": f.rule, "ok": f.ok, "skipped": f.skipped, "detail": f.detail}
+                         for f in c.findings]})
 
     report["passed"] = total_fail == 0
     report["total_failures"] = total_fail
+    report["total_skipped"] = total_skip
     ev_dir = REPO / "evidence" / "stage-0"; ev_dir.mkdir(parents=True, exist_ok=True)
     _atomic_write(ev_dir / "validator-report.json", json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 
     print("-" * 74)
-    print("GATE 0 -> 1: GRÜN — alle ADR-Invarianten erfüllt." if total_fail == 0
-          else f"GATE 0 -> 1: ROT — {total_fail} Verstoß/Verstöße. Gate gesperrt.")
+    if total_fail == 0 and total_skip == 0:
+        print("GATE 0 -> 1: GRÜN — alle ADR-Invarianten erfüllt (inkl. Live-DB).")
+    elif total_fail == 0:
+        print(f"GATE 0 -> 1: GRÜN (lokal) — {total_skip} Check übersprungen "
+              "(Live-DB); im Gate via VV_REQUIRE_LIVE erzwungen.")
+    else:
+        print(f"GATE 0 -> 1: ROT — {total_fail} Verstoß/Verstöße. Gate gesperrt.")
     print("Report: evidence/stage-0/validator-report.json")
     return 0 if total_fail == 0 else 1
 

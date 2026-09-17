@@ -1,7 +1,12 @@
-// VV Worker — DB-Pool (ADR-01). App-Rolle vv_app (NOSUPERUSER/NOBYPASSRLS).
+// VV Worker — DB-Pool (ADR-01). EIGENE Rolle vv_worker (NOSUPERUSER/NOBYPASSRLS), NICHT vv_app
+// (Review-Runde 2, Codex #4-new / Gemini #1). Nur der Worker darf die Outbox-Consumer-Funktionen
+// ausführen; die Verbindung nutzt daher WORKER_DATABASE_URL (vv_worker), nicht DATABASE_URL (vv_app).
 import { Pool } from "pg";
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+const connectionString = process.env.WORKER_DATABASE_URL;
+if (!connectionString) throw new Error("WORKER_DATABASE_URL fehlt (vv_worker-Verbindung, fail-fast)");
+
+export const pool = new Pool({ connectionString, max: 4 });
 
 export interface OutboxRow {
   id: string; tenant_id: string; topic: string; payload: unknown;

@@ -11,6 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_only}
       POSTGRES_DB: ${POSTGRES_DB:-vv}
       VV_APP_PASSWORD: ${VV_APP_PASSWORD:-change_me_dev_only}
+      VV_WORKER_PASSWORD: ${VV_WORKER_PASSWORD:-change_me_dev_only}
     ports:
       - "5432:5432"
     volumes:
@@ -91,9 +92,10 @@ services:
   worker:
     build:
       context: ./apps/worker
-    # Eigene technische Identität (vv-worker), keine Web-/Admin-/Root-Secrets.
+    # Eigene technische Identität (vv_worker): eigene DB-Verbindung (NICHT DATABASE_URL/vv_app),
+    # keine Web-/Admin-/Root-Secrets.
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      WORKER_DATABASE_URL: ${WORKER_DATABASE_URL}
       WORKER_OIDC_CLIENT_ID: ${WORKER_OIDC_CLIENT_ID}
       WORKER_OIDC_CLIENT_SECRET: ${WORKER_OIDC_CLIENT_SECRET}
       MODEL_PROVIDER: ${MODEL_PROVIDER}

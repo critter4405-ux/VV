@@ -51,15 +51,30 @@ jobs:
           for f in db/migrations/*.sql db/seed/*.sql; do
             echo "-> $f"; psql -v ON_ERROR_STOP=1 -h localhost -U vv_bootstrap -d vv -f "$f"
           done
-          psql -h localhost -U vv_bootstrap -d vv -c "ALTER ROLE vv_app PASSWORD 'change_me_dev_only';"
-      - name: Validatoren im LIVE-Modus (gate-blockierend)
+          # Passwörter sicher quotiert setzen (kein String-Interpolation, Codex #7-new).
+          # :'var' interpoliert nur über stdin/-f, nicht über -c; \gexec ohne ';' (sonst No-Op).
+          for r in vv_app vv_worker; do
+            printf "SELECT format('ALTER ROLE %%I PASSWORD %%L', :'role', :'pw')\n\\gexec\n" | \
+              psql -v ON_ERROR_STOP=1 -h localhost -U vv_bootstrap -d vv \
+                -v role="$r" -v pw="change_me_dev_only" -f -
+          done
+      - name: Validatoren im LIVE-Modus (gate-blockierend, Live PFLICHT)
         env:
           VV_VALIDATE_DSN: "host=localhost dbname=vv user=vv_app password=change_me_dev_only"
+          VV_REQUIRE_LIVE: "1"   # ohne echte DB im Gate -> FAIL, nie stiller PASS (Codex #5-new)
         run: python -m validators.validate
       - name: RLS-Gegenprobe als vv_app (ohne Kontext -> 0 Zeilen)
         run: |
           N=$(PGPASSWORD=change_me_dev_only psql -tA -h localhost -U vv_app -d vv -c "SELECT count(*) FROM person")
           echo "sichtbar ohne Tenant-Kontext: $N"; test "$N" = "0"
+      - name: Rechte-Gegenprobe — vv_app darf Outbox NICHT zustellen (Codex #4-new)
+        run: |
+          set +e
+          PGPASSWORD=change_me_dev_only psql -h localhost -U vv_app -d vv -c "SELECT vv_outbox_claim(1)" 2>err.log
+          rc=$?; set -e
+          echo "rc=$rc"; cat err.log
+          test "$rc" != "0" && grep -qi "permission denied" err.log
+          echo "OK: vv_app hat KEIN EXECUTE auf vv_outbox_claim"
 
   typecheck-web:
     name: Typecheck Web/API

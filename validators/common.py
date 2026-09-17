@@ -14,6 +14,7 @@ class Finding:
     rule: str          # z.B. "ADR-01"
     ok: bool
     detail: str
+    skipped: bool = False   # WP5-Runde2: 'übersprungen' ist WEDER pass NOCH fail (Codex #5-new)
 
 
 @dataclass
@@ -24,7 +25,16 @@ class CheckResult:
 
     @property
     def failed(self) -> list[Finding]:
-        return [f for f in self.findings if not f.ok]
+        return [f for f in self.findings if not f.ok and not f.skipped]
+
+    @property
+    def skipped_findings(self) -> list[Finding]:
+        return [f for f in self.findings if f.skipped]
+
+    @property
+    def is_skipped(self) -> bool:
+        # Reiner Skip-Check: nichts ausgeführt, nichts fehlgeschlagen.
+        return len(self.findings) > 0 and all(f.skipped for f in self.findings)
 
     @property
     def passed(self) -> bool:

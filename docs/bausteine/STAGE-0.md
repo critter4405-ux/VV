@@ -10,7 +10,7 @@
 - **Version:** 1.0
 - **Datum:** 16.09.2026
 - **Verantwortlich:** Bau-KI (Claude Code + Opus 4.8, Aufwand hoch) · Review = Fremdmodell (Aufwand hoch)
-- **Status/Gate:** gebaut · Vier-Augen-Review **nicht bestanden** → **repariert (WP0–WP7, 17.09.2026)** · **Gate 0→1: erneutes Fremdmodell-Review ausstehend** (siehe `REVIEW-Befunde-Stage-0.md`)
+- **Status/Gate:** gebaut · Review R1 **nicht bestanden** → repariert (WP0–WP7) · Review R2 (Codex „nicht bestanden" / Gemini „bestanden mit Auflagen") → **Reparaturrunde 2 (F1–F8) umgesetzt & gegen echte PostgreSQL 16 + adversarial verifiziert** (17.09.2026) · **Gate 0→1: 3. Fremdmodell-Review ausstehend** (siehe `REVIEW-Befunde-Stage-0.md`, `evidence/stage-0/round2-verification.md`)
 
 ## 2. Was
 
@@ -106,4 +106,5 @@ bevor etwas live geht — Echtbetrieb-Disziplin ab dem ersten Baustein.
 ## 9. Änderungshistorie
 
 - 16.09.2026 — Stage 0 gebaut (Startpaket-Harvest); K22 auf „Bau gestartet/Stage 0".
-- 17.09.2026 — Vier-Augen-Review (Codex + Gemini) = nicht bestanden; **Reparatur WP0–WP7** (Git-Repo, RLS-Rollentrennung, Transaktions-Wrapper, DB-seitige Audit-Kette, deny-by-default, Vier-Augen-Guards, OIDC, gehärtete Validatoren gegen echte PostgreSQL + AST, ehrliche Evidenz, Scope-Abgrenzung ADR-08/11). Erneutes Fremdmodell-Review ausstehend.
+- 17.09.2026 — Vier-Augen-Review R1 (Codex + Gemini) = nicht bestanden; **Reparatur WP0–WP7** (Git-Repo, RLS-Rollentrennung, Transaktions-Wrapper, DB-seitige Audit-Kette, deny-by-default, Vier-Augen-Guards, OIDC, gehärtete Validatoren gegen echte PostgreSQL + AST, ehrliche Evidenz, Scope-Abgrenzung ADR-08/11).
+- 17.09.2026 — Review R2 des reparierten Stands: Codex „nicht bestanden" (8 Befunde), Gemini „bestanden mit Auflagen" (4). **Reparaturrunde 2 (F1–F8):** Vier-Augen `binding` server-seitig + Adversarial-Test; eigene Rolle `vv_worker` (Outbox-EXECUTE nur Worker) + `pgboss`-Schema; Audit-Hash kanonisch inkl. id + TRUNCATE-Sperre; Validatoren gegen dyn. Import / ignorierte Policy-Entscheidung / Live-Skip-als-PASS / Mermaid gehärtet; Keycloak-Mapper (tenant_id/roles/aud); Passwort-Setzen ohne String-Interpolation; Guard entpackt XLSX/ZIP. Verifiziert gegen echte PostgreSQL 16 + adversarial (`evidence/stage-0/round2-verification.md`). 3. Fremdmodell-Review ausstehend.
