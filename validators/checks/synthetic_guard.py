@@ -37,20 +37,26 @@ def _scan_text(text: str, rel: str, res: CheckResult) -> int:
 
 
 def _scan_archive(path: str, rel: str, res: CheckResult) -> int:
-    """ZIP-Container (inkl. XLSX/DOCX) entpacken und innere Text-/XML-Teile scannen."""
+    """ZIP-Container (inkl. XLSX/DOCX) entpacken und innere Text-/XML-Teile scannen.
+    Review-Runde 3, Codex #5: der innere Dateiname (info.filename) wurde unmaskiert geloggt
+    (PII-Leak). Jetzt wird der EINTRAG nur per Index benannt, und der Dateiname selbst wird
+    gescannt + maskiert (nie im Klartext ausgegeben)."""
     hits = 0
     if not zipfile.is_zipfile(path):
         return 0
     try:
         with zipfile.ZipFile(path) as zf:
-            for info in zf.infolist():
+            for idx, info in enumerate(zf.infolist()):
+                label = f"{rel}::eintrag[{idx}]"      # KEIN Klartext-Dateiname im Log
+                # Dateinamen selbst auf PII prüfen (maskiert):
+                hits += _scan_text(info.filename, f"{label}:name", res)
                 if info.is_dir() or info.file_size > 8_000_000:
                     continue
                 try:
                     raw = zf.read(info).decode("utf-8", errors="ignore")
                 except Exception:  # noqa: BLE001
                     continue
-                hits += _scan_text(raw, f"{rel}::{info.filename}", res)
+                hits += _scan_text(raw, f"{label}:inhalt", res)
     except zipfile.BadZipFile:
         pass
     return hits

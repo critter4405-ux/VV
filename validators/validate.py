@@ -79,11 +79,17 @@ def main() -> int:
         for f in c.skipped_findings:
             print(f"        ~ übersprungen: {f.detail}")
         report["checks"].append({"adr": c.adr, "name": c.name,
-            "status": status.lower(), "passed": c.passed, "skipped": c.is_skipped,
+            "status": status.lower(),
+            # Review-Runde 3, Codex #6: ein reiner Skip ist KEIN pass.
+            "passed": c.passed and not c.is_skipped, "skipped": c.is_skipped,
             "findings": [{"rule": f.rule, "ok": f.ok, "skipped": f.skipped, "detail": f.detail}
                          for f in c.findings]})
 
-    report["passed"] = total_fail == 0
+    # Getrennte, ehrliche Felder (Codex #6): static = keine Verstöße; gate = zusätzlich nichts
+    # übersprungen (Live-DB lief). `passed` = voller Gate-Erfolg (nie true bei Skips).
+    report["static_passed"] = total_fail == 0
+    report["gate_passed"] = total_fail == 0 and total_skip == 0
+    report["passed"] = report["gate_passed"]
     report["total_failures"] = total_fail
     report["total_skipped"] = total_skip
     ev_dir = REPO / "evidence" / "stage-0"; ev_dir.mkdir(parents=True, exist_ok=True)

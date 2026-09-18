@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T21:32:53.787277+00:00",
+  "generated_at": "2026-09-18T10:15:45.886011+00:00",
   "stage": 0,
   "live_db": true,
   "require_live": true,
@@ -581,6 +581,8 @@
       ]
     }
   ],
+  "static_passed": true,
+  "gate_passed": true,
   "passed": true,
   "total_failures": 0,
   "total_skipped": 0

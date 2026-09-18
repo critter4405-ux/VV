@@ -22,3 +22,8 @@ export async function claimOutbox(max = 10): Promise<OutboxRow[]> {
 export async function markOutboxDone(id: string): Promise<void> {
   await pool.query("SELECT vv_outbox_done($1)", [id]);
 }
+
+/** Fehlgeschlagene Zustellung: nach N Versuchen in die DLQ (dead_at), sonst Retry (Gemini MITTEL). */
+export async function markOutboxFail(id: string, err: string): Promise<void> {
+  await pool.query("SELECT vv_outbox_fail($1, $2, 5)", [id, err]);
+}

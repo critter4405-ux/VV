@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS outbox (
     created_at      timestamptz NOT NULL DEFAULT now(),
     locked_until    timestamptz,                 -- Leasing für FOR UPDATE SKIP LOCKED (WP4)
     processed_at    timestamptz,
+    attempts        int NOT NULL DEFAULT 0,       -- Zustellversuche (Review-Runde 3, Gemini MITTEL)
+    dead_at         timestamptz,                  -- DLQ: nach N Fehlversuchen aussortiert
+    last_error      text,
     idempotency_key text NOT NULL,
     CONSTRAINT outbox_idem_uk UNIQUE (tenant_id, idempotency_key)
 );
@@ -101,10 +104,11 @@ CREATE POLICY outbox_tenant_isolation ON outbox
 -- OHNE der App-Rolle BYPASSRLS zu geben. Atomarer Claim per FOR UPDATE SKIP LOCKED + Leasing.
 CREATE OR REPLACE FUNCTION vv_outbox_claim(max_rows int DEFAULT 10)
 RETURNS SETOF outbox LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  UPDATE outbox SET locked_until = now() + interval '1 minute'
+  UPDATE outbox SET locked_until = now() + interval '1 minute', attempts = attempts + 1
   WHERE id IN (
     SELECT id FROM outbox
-    WHERE processed_at IS NULL AND (locked_until IS NULL OR locked_until < now())
+    WHERE processed_at IS NULL AND dead_at IS NULL          -- DLQ-Einträge nie erneut claimen
+      AND (locked_until IS NULL OR locked_until < now())
     ORDER BY created_at
     FOR UPDATE SKIP LOCKED
     LIMIT max_rows)
@@ -116,6 +120,18 @@ RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   UPDATE outbox SET processed_at = now(), locked_until = NULL WHERE id = p_id;
 $$;
 
+-- Fehlschlag: nach p_max Versuchen in die DLQ (dead_at), sonst Lease sofort freigeben (Retry).
+-- Verhindert Poison-Pill-Endlosschleifen (Review-Runde 3, Gemini MITTEL).
+CREATE OR REPLACE FUNCTION vv_outbox_fail(p_id uuid, p_err text, p_max int DEFAULT 5)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE outbox SET
+    last_error   = left(p_err, 2000),
+    dead_at      = CASE WHEN attempts >= p_max THEN now() ELSE NULL END,
+    locked_until = CASE WHEN attempts >= p_max THEN locked_until ELSE NULL END
+  WHERE id = p_id;
+$$;
+
 REVOKE ALL ON FUNCTION vv_outbox_claim(int) FROM PUBLIC;
 REVOKE ALL ON FUNCTION vv_outbox_done(uuid) FROM PUBLIC;
--- EXECUTE-Grants an vv_app folgen in 0005 (nach Rollen-Existenz).
+REVOKE ALL ON FUNCTION vv_outbox_fail(uuid, text, int) FROM PUBLIC;
+-- EXECUTE-Grants an vv_worker folgen in 0005 (nach Rollen-Existenz).

@@ -25,9 +25,12 @@ def _mermaid_problem(text: str) -> str | None:
     lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     if not re.match(r"^(flowchart|graph)\s+(TB|TD|BT|LR|RL)\b|^(sequenceDiagram|classDiagram|stateDiagram(-v2)?)\b", lines[0]):
         return "erste Zeile ist keine gültige Mermaid-Direktive"
+    # Klammerbalance (Review-Runde 3, Codex #7: nicht geschlossene Node-Klammer galt als ok).
+    for op, cl in (("[", "]"), ("(", ")"), ("{", "}")):
+        if body.count(op) != body.count(cl):
+            return f"unbalancierte Klammern '{op}{cl}' ({body.count(op)} vs. {body.count(cl)})"
     is_flow = bool(re.match(r"^(flowchart|graph)\b", lines[0]))
     if is_flow:
-        # subgraph/end müssen balanciert sein.
         opens = sum(1 for ln in lines if re.match(r"^subgraph\b", ln))
         closes = sum(1 for ln in lines if ln == "end")
         if opens != closes:
@@ -37,6 +40,16 @@ def _mermaid_problem(text: str) -> str | None:
     elif lines[0].startswith("sequenceDiagram"):
         if "->>" not in body and "-->>" not in body:
             return "keine Nachricht (->>/-->>) im Sequenzdiagramm"
+    elif lines[0].startswith("classDiagram"):
+        # leeres classDiagram (nur Direktive) galt zuvor als ok -> Inhalt verlangen.
+        content = [ln for ln in lines[1:] if ln]
+        if not content:
+            return "leeres classDiagram (keine Klassen/Beziehungen)"
+        if not any(re.search(r"(<\|--|\*--|o--|-->|\.\.>|:|\bclass\b)", ln) for ln in content):
+            return "classDiagram ohne Klassen/Member/Beziehungen"
+    elif lines[0].startswith("stateDiagram"):
+        if not any("-->" in ln for ln in lines[1:]):
+            return "stateDiagram ohne Übergänge"
     return None
 
 

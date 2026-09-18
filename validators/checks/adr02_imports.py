@@ -13,9 +13,35 @@ MODULES_DIR = REPO / "apps" / "web" / "src" / "modules"
 SPEC = re.compile(
     r"""(?:import\s+[^;]*?from\s*|export\s+[^;]*?from\s*|import\s*\(\s*)['"]([^'"]+)['"]""",
     re.DOTALL)
-# Dynamischer Import mit NICHT-Literal-Argument (Variable/Ausdruck): statisch nicht prüfbar.
-# In Modulcode fail-closed verboten (Review-Runde 2, Codex #5-new: import(x) umging ADR-02).
-DYN_IMPORT = re.compile(r"""\bimport\s*\(\s*(['"`]?)""")
+# Dynamischer import() mit nicht-STATISCHEM Argument ist statisch nicht prüfbar -> in Modulcode
+# fail-closed verboten. Erfasst: Variable/Ausdruck (kein Quote) UND Template-Literal MIT ${…}
+# (Review-Runde 3, Codex #2: import(`../${x}/...`) galt fälschlich als statisches Literal).
+IMPORT_CALL = re.compile(r"\bimport\s*\(\s*")
+
+
+def _dynamic_import_violation(src: str) -> str | None:
+    """Gibt eine Fehlerbeschreibung zurück, wenn ein import() ein nicht-statisches Argument hat."""
+    for m in IMPORT_CALL.finditer(src):
+        i = m.end()
+        if i >= len(src):
+            continue
+        c = src[i]
+        if c in "'\"":
+            continue  # statisches String-Literal -> ok (SPEC prüft den Pfad)
+        if c == "`":
+            # Template-Literal: bis zum schließenden Backtick lesen, auf ${ prüfen.
+            j = i + 1
+            while j < len(src) and src[j] != "`":
+                if src[j] == "\\":
+                    j += 2; continue
+                j += 1
+            body = src[i + 1:j]
+            if "${" in body:
+                return "dynamischer import() mit Template-Interpolation `${…}` (nicht statisch prüfbar)"
+            continue  # Template ohne Interpolation = statisch -> ok
+        # Variable/Ausdruck/Funktion
+        return "dynamischer import() mit nicht-literalem Argument (Variable/Ausdruck)"
+    return None
 
 
 def _allowlist() -> dict[str, list[str]]:
@@ -38,13 +64,12 @@ def run() -> CheckResult:
         rel = os.path.relpath(path, MODULES_DIR)
         current = rel.split(os.sep)[0]
         src = strip_ts_comments(open(path, encoding="utf-8").read())
-        # Fail-closed: dynamischer import() mit nicht-literalem Argument ist nicht verifizierbar.
-        for m in DYN_IMPORT.finditer(src):
-            if m.group(1) == "":   # kein Quote direkt nach '(' -> Variable/Ausdruck
-                violations += 1
-                res.findings.append(Finding("ADR-02", False,
-                    f"{rel}: dynamischer import() mit nicht-statischem Argument — "
-                    "in Modulcode verboten (Cross-Modul nicht prüfbar, fail-closed)"))
+        # Fail-closed: dynamischer import() mit nicht-statischem Argument ist nicht verifizierbar.
+        dyn = _dynamic_import_violation(src)
+        if dyn:
+            violations += 1
+            res.findings.append(Finding("ADR-02", False,
+                f"{rel}: {dyn} — in Modulcode verboten (Cross-Modul nicht prüfbar, fail-closed)"))
         for spec in SPEC.findall(src):
             target = None
             m = re.match(r"\.\./([^/]+)/", spec)

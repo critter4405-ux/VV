@@ -105,6 +105,28 @@ jobs:
       - uses: actions/checkout@v4.2.2
       - run: cp .env.example .env && docker compose config > /dev/null && echo OK
 
+  mermaid-lint:
+    name: Mermaid echter Parser (mmdc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4.1.0
+        with: { node-version: "22" }
+      - name: Mermaid-Blöcke extrahieren
+        run: python scripts/mermaid_lint.py
+      - name: Jede .mmd mit echtem Parser rendern (Syntaxfehler = Fehlschlag)
+        run: |
+          shopt -s nullglob
+          files=(build/mermaid/*.mmd)
+          if [ ${#files[@]} -eq 0 ]; then echo "keine Diagramme"; exit 0; fi
+          for f in "${files[@]}"; do
+            echo "-> $f"
+            npx -y @mermaid-js/mermaid-cli@11 -i "$f" -o "${f%.mmd}.svg" -p scripts/puppeteer-config.json -q || { echo "::error::Mermaid-Syntaxfehler in $f"; exit 1; }
+          done
+          echo "Alle Diagramme syntaktisch valide."
+
   secret-scan:
     name: Secret-Scan (gitleaks)
     runs-on: ubuntu-latest

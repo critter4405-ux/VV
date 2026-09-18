@@ -114,3 +114,45 @@
 Bau-KI-seitig F1–F8 umgesetzt und gegen **echte PostgreSQL 16 + adversarial** verifiziert
 (`evidence/stage-0/round2-verification.md`). **Gate 0→1 bleibt gesperrt** bis zum **3.
 Fremdmodell-Review** (Codex + Gemini gegen diesen Stand) **und Betreiber-Freigabe**.
+
+---
+
+# Runde 3 — 3. Fremdmodell-Review + Reparaturrunde 3 (17.–18.09.2026)
+
+> **Codex (GPT-5.6 Sol, high) = „nicht bestanden"** (1 CRITICAL + 4 HOCH + 2 MITTEL).
+> **Gemini (3.1 Pro, high) = „bestanden mit Auflagen"** (F6 nach vollständigem Upload grün; 2 Auflagen).
+> Beide gegen den Runde-2-Stand. Konsolidierte Reparaturrunde 3 (G1–G9), gegen echte PostgreSQL 16 +
+> adversarial verifiziert (`evidence/stage-0/round3-verification.md`). Gate blieb gesperrt.
+
+## Befunde Runde 3 → Fix (G#)
+
+| G | Schwere | Befund (Herkunft) | Fix | Verifiziert |
+|---|---------|-------------------|-----|-------------|
+| **G1** | **CRITICAL** | Vier-Augen über Metadaten-Spoofing umgehbar: `actionClass`/`state`/`approvedBy`/`token` waren Aufrufer-Daten — Zahlung als `reminder` etikettierbar, „approved" erfindbar, In-Memory-Token nach Neustart wiederverwendbar (Codex #1) | Effekt-Registry (fixe Aktions-/Senken-Identität) + Executor als einziger Pfad zu bindenden Senken + Freigabe **atomar aus der DB** (`vv_consume_approval`: fremd-genehmigt/scope/ablauf/einmal); Reviewer-Unabhängigkeit als DB-CHECK | Unit 7/7 + DB end-to-end (Replay ROT, Selbst-Freigabe ROT, vv_app denied) |
+| **G4** | hoch | vv_app hatte direkt UPDATE/DELETE auf `outbox` → Zustellung unterdrückbar trotz entzogenem Consumer-Recht (Codex #4) | vv_app nur INSERT+SELECT auf outbox; Status/Lease nur über Worker-Funktionen | DB: UPDATE/DELETE outbox → permission denied |
+| **G2** | hoch | ADR-02-Validator: `import(\`../${x}/…\`)` galt als statisches Literal (Codex #2) | Template-Literal mit `${…}` = Verstoß (fail-closed); statisches Template ohne Interpolation bleibt ok | adversarial ROT / statisch grün |
+| **G3** | hoch | ADR-04-Validator: Guard in einem String-Literal versteckt zählte als echt (Codex #3) | Längentreues Blanken: Guard/Decision auf strings-geblankter, Writes auf strings-erhaltener Quelle | Decoy ROT, echte Aktion GRÜN |
+| **G9** | niedrig | ADR-04: Destrukturierung `const { allowed } = checkPolicy()` nicht erkannt → False-Positive (Gemini) | Destrukturierung + benannte Variable werden erkannt | destrukturierte Aktion GRÜN |
+| **G5** | hoch | Guard loggte inneren Archiv-Dateinamen unmaskiert (neuer PII-Leak, Codex #5) | Eintrag per Index benannt; Dateiname maskiert **und** selbst gescannt | kein Klartext-Name/-IBAN im Log |
+| **G6** | mittel | Report wies SKIP zugleich als `passed=true` aus (Codex #6) | `passed=false` für reine Skips; getrennte Felder `static_passed`/`gate_passed`/`skipped` | JSON: skip → passed=False |
+| **G7** | mittel | Mermaid-Prüfung kein echter Parser: unbalancierte Klammern / leeres classDiagram grün (Codex #7) | Validator: Klammerbalance + classDiagram-Inhalt; CI-Job `mermaid-lint` mit echtem Parser (mmdc) | Validator ROT bei kaputt; mmdc 14/14 ok |
+| **G8** | mittel | Outbox ohne Max-Retries/DLQ → Poison-Pill-Endlosschleife (Gemini) | `attempts`+`dead_at`+`vv_outbox_fail`: nach N Versuchen DLQ, sonst Retry; Worker-Fehlerpfad | DB: attempts=5 → dead, kein Re-Claim |
+
+## „Nicht unabhängig verifiziert" (Codex) — Antwort
+
+Codex konnte den PostgreSQL-16-Live-Test **lokal** nicht ausführen (kein Docker/WSL). Der geforderte
+**unabhängige** Live-Lauf ist der **GitHub-CI-Job `db-integration`** (Postgres-16-Service auf
+GitHub-Runnern, außerhalb der Bau-Sandbox): Migrationen + RLS-Gegenprobe + „vv_app kann Outbox nicht"-
+Gegenprobe. Er läuft bei jedem Push gate-blockierend — das ist die unabhängige Wiederholung.
+
+## Bewusst Stage-1 / dokumentierte Residuen
+
+- Vier-Augen als **voller DB-Zustandsautomat** + DB-Pool als typisierte **Unit-of-Work** (der Effekt-
+  Executor ist die Basis dafür); Validatoren final per **TS-AST** statt Blanken; Keycloak-Token-
+  Integrationstest gegen laufendes KC; Supply-Chain-Pinning (Actions-SHA/Image-Digest).
+
+## Status nach Runde 3
+
+Bau-KI-seitig G1–G9 umgesetzt und gegen **echte PostgreSQL 16 + adversarial** verifiziert
+(`evidence/stage-0/round3-verification.md`). **Gate 0→1 bleibt gesperrt** bis zum **4.
+Fremdmodell-Review** (Codex + Gemini gegen diesen Stand) **und Betreiber-Freigabe**.

@@ -4,7 +4,7 @@
 // ein Freigabe-Objekt an (Vier-Augen, siehe agents/vier_augen.ts).
 import PgBoss from "pg-boss";
 import { writeFileSync } from "node:fs";
-import { claimOutbox, markOutboxDone } from "./db.ts";
+import { claimOutbox, markOutboxDone, markOutboxFail } from "./db.ts";
 
 function beat() {
   try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
@@ -14,9 +14,15 @@ async function pollOutbox() {
   try {
     const rows = await claimOutbox(10);
     for (const row of rows) {
-      // Stage-0: nur protokollieren (Zustellung/Agentenlogik folgt beim Modul-Bau).
-      console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
-      await markOutboxDone(row.id);
+      try {
+        // Stage-0: nur protokollieren (Zustellung/Agentenlogik folgt beim Modul-Bau).
+        console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
+        await markOutboxDone(row.id);
+      } catch (jobErr) {
+        // Poison-Pill-Schutz: Fehlversuch zählen, nach N in die DLQ (dead_at) statt Endlos-Reclaim.
+        console.error(`[vv-worker] outbox ${row.id} Zustellfehler:`, jobErr);
+        await markOutboxFail(row.id, String(jobErr)).catch(() => { /* best effort */ });
+      }
     }
   } catch (err) {
     console.error("[vv-worker] outbox poll error:", err);
