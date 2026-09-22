@@ -21,12 +21,14 @@ jobs:
           echo "OK"
       - run: python -m pip install -r validators/requirements.txt
       - run: python -m validators.validate
+      - name: Validator-Selbsttest (Sicherheits-Regressionsschutz)
+        run: python -m validators.selftest   # bekannte Umgehungen müssen ROT bleiben
       - uses: actions/upload-artifact@v4.4.3
         if: always()
         with: { name: validator-report, path: evidence/stage-0/validator-report.json }
 
   db-integration:
-    name: Live-DB: Migrationen + RLS gegen echte PostgreSQL (Gate)
+    name: "Live-DB: Migrationen + RLS gegen echte PostgreSQL (Gate)"
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -67,14 +69,11 @@ jobs:
         run: |
           N=$(PGPASSWORD=change_me_dev_only psql -tA -h localhost -U vv_app -d vv -c "SELECT count(*) FROM person")
           echo "sichtbar ohne Tenant-Kontext: $N"; test "$N" = "0"
-      - name: Rechte-Gegenprobe — vv_app darf Outbox NICHT zustellen (Codex #4-new)
-        run: |
-          set +e
-          PGPASSWORD=change_me_dev_only psql -h localhost -U vv_app -d vv -c "SELECT vv_outbox_claim(1)" 2>err.log
-          rc=$?; set -e
-          echo "rc=$rc"; cat err.log
-          test "$rc" != "0" && grep -qi "permission denied" err.log
-          echo "OK: vv_app hat KEIN EXECUTE auf vv_outbox_claim"
+      - name: Sicherheits-DB-Gegenproben (RLS, Outbox, approved_by/SoD, DLQ-Reaper) — gate-blockierend
+        env:
+          VV_PGHOST: localhost
+          PW: change_me_dev_only
+        run: bash scripts/ci_db_asserts.sh
 
   typecheck-web:
     name: Typecheck Web/API
@@ -88,7 +87,7 @@ jobs:
       - run: npm run typecheck
 
   typecheck-worker:
-    name: Typecheck Worker
+    name: Typecheck + Vier-Augen-Test Worker
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/worker } }
     steps:
@@ -97,6 +96,24 @@ jobs:
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
+      - name: Vier-Augen-Adversarial-Test (Sicherheit)
+        run: npm test   # spoof/forge/replay/expiry der Freigabe müssen ROT sein
+
+  dep-audit:
+    name: Dependency-Audit (npm) — high/critical blockierend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [web, worker]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with: { node-version: "22" }
+      - name: npm audit (Produktions-Abhängigkeiten)
+        run: npm audit --omit=dev --audit-level=high
 
   compose-config:
     name: docker compose config
