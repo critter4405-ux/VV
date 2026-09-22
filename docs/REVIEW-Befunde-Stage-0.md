@@ -186,3 +186,19 @@ Fremdmodell-Review** (Codex + Gemini gegen diesen Stand) **und Betreiber-Freigab
 H1/H2 umgesetzt und gegen echte PostgreSQL 16 verifiziert. **Gate 0→1 bleibt gesperrt** bis
 erneutes Fremdmodell-Review gegen diesen Stand + Betreiber-Freigabe. Die zwei Prüfer haben in
 Runde 4 keine weiteren belastbaren neuen Produktbefunde geliefert.
+
+---
+
+# Runde 5 — Bestätigungs-Review + H3 (22.09.2026)
+
+> **Codex** (Harness in WSL): PASS=39/FAIL=2, **H1 PASS, H2 PASS** — die 2 FAILs waren ein K31-Scan-
+> Artefakt (Commit-Trailer-Mail in der ungetrackten `round4.patch`), kein Produktbefund. **Gemini:**
+> H1 **gelöst**, H2 mit einer Auflage — ein feiner, echter Reaper-Race.
+
+| # | Schwere | Befund (Herkunft) | Fix | Verifiziert |
+|---|---------|-------------------|-----|-------------|
+| **H3** | mittel | Reaper in `vv_outbox_claim` prüfte das Lease nicht → ein aktiv verarbeiteter 5. Versuch (Lease aktiv) konnte durch einen nebenläufigen Worker fälschlich als tot markiert werden (Gemini R5) | Reaper reapt nur `attempts>=5` **UND** abgelaufenes Lease (`locked_until IS NULL OR locked_until < now()`) | Hard-Crash → DLQ; in-flight NICHT getötet, Worker schließt ab → processed=true/dead=false |
+
+**Status nach Runde 5:** H1 und H2 von beiden Prüfern bestätigt; die einzige echte Auflage (H3
+Reaper-Race) ist behoben und gegen echte PostgreSQL 16 verifiziert. Keine weiteren belastbaren
+Produktbefunde. Der Review ist damit konvergiert — Empfehlung: **Stage-0-Freigabe durch den Betreiber.**

@@ -111,8 +111,12 @@ CREATE OR REPLACE FUNCTION vv_outbox_claim(max_rows int DEFAULT 10)
 RETURNS SETOF outbox LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   -- (1) Reaper: über der Versuchsgrenze -> DLQ, unabhängig davon ob vv_outbox_fail lief.
+  -- Review-Runde 5, Gemini (Race): NUR Einträge mit ABGELAUFENEM Lease reapen — sonst würde ein
+  -- gerade aktiv verarbeiteter 5. Versuch (Lease läuft noch) fälschlich als tot markiert, während
+  -- ihn ein anderer Worker noch erfolgreich abschließt. Lease-Prüfung wie im Claim.
   UPDATE outbox SET dead_at = now(), last_error = coalesce(last_error, 'max attempts (hard crash reaper)')
-    WHERE processed_at IS NULL AND dead_at IS NULL AND attempts >= 5;
+    WHERE processed_at IS NULL AND dead_at IS NULL AND attempts >= 5
+      AND (locked_until IS NULL OR locked_until < now());
   -- (2) Claim nur unterhalb der Grenze.
   RETURN QUERY
     UPDATE outbox SET locked_until = now() + interval '1 minute', attempts = attempts + 1

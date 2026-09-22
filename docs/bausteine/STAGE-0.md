@@ -10,7 +10,7 @@
 - **Version:** 1.0
 - **Datum:** 16.09.2026
 - **Verantwortlich:** Bau-KI (Claude Code + Opus 4.8, Aufwand hoch) · Review = Fremdmodell (Aufwand hoch)
-- **Status/Gate:** gebaut · R1 nicht bestanden → WP0–WP7 · R2 → F1–F8 · R3 (CRITICAL Metadaten-Spoofing) → G1–G9 · R4 (Codex+Gemini zusammengelaufen auf 2 echten Befunden; Rest = Upload-/Pfad-Artefakte) → **Reparaturrunde 4 (H1 approved_by-Bindung, H2 Hard-Crash-DLQ) umgesetzt & gegen echte PostgreSQL 16 verifiziert** (22.09.2026) · **Gate 0→1: erneutes Fremdmodell-Review ausstehend** (siehe `REVIEW-Befunde-Stage-0.md`, `evidence/stage-0/round4-verification.md`)
+- **Status/Gate:** gebaut · R1→WP0–WP7 · R2→F1–F8 · R3 (CRITICAL Metadaten-Spoofing)→G1–G9 · R4→H1 approved_by-Bindung, H2 Hard-Crash-DLQ · **R5 (Bestätigung): Codex H1/H2 PASS (39/2, FAILs = Scan-Artefakt), Gemini H1 gelöst + H2-Reaper-Race → H3 behoben & gegen echte PostgreSQL 16 verifiziert** (22.09.2026). **Review konvergiert; alle schweren Befunde behoben+verifiziert. Gate 0→1: Betreiber-Freigabe ausstehend** (siehe `REVIEW-Befunde-Stage-0.md`, `evidence/stage-0/round5-verification.md`)
 
 ## 2. Was
 
