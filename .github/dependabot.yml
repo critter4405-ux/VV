@@ -18,3 +18,8 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+  # Container-Images (docker-compose): hält die auf @sha256-Digest gepinnten Images aktuell.
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5

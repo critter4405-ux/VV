@@ -1,5 +1,8 @@
 # VV CI — Stage 0. Build + Validatoren gate-blockierend. NUR synthetische Daten (ADR-10).
-# TODO Supply-Chain-Härtung (WP6-Rest): Actions auf Commit-SHA pinnen, Container-Images auf Digest.
+# Supply-Chain: alle GitHub-Actions auf Commit-SHA gepinnt (Versions-Tag als Kommentar),
+# Dependabot (github-actions + docker) hält die SHAs/Digests aktuell. Container-Images werden
+# per scripts/pin-images.sh auf @sha256-Digest gepinnt (in einer Umgebung mit Registry-Zugang
+# ausführen; die Sandbox-Egress-Policy sperrt Docker Hub/quay.io) — bis dahin fixe Tags, kein :latest.
 name: vv-ci
 
 on:
@@ -12,8 +15,8 @@ jobs:
     name: ADR-Validatoren statisch (Gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with: { python-version: "3.12" }
       - name: Kein .env committet?
         run: |
@@ -23,7 +26,7 @@ jobs:
       - run: python -m validators.validate
       - name: Validator-Selbsttest (Sicherheits-Regressionsschutz)
         run: python -m validators.selftest   # bekannte Umgehungen müssen ROT bleiben
-      - uses: actions/upload-artifact@v4.4.3
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         if: always()
         with: { name: validator-report, path: evidence/stage-0/validator-report.json }
 
@@ -44,8 +47,8 @@ jobs:
     env:
       PGPASSWORD: change_me_dev_only
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with: { python-version: "3.12" }
       - run: python -m pip install -r validators/requirements.txt
       - name: Migrationen + Seed einspielen (Bootstrap-Superuser)
@@ -80,8 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/web } }
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
@@ -91,8 +94,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/worker } }
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
@@ -109,8 +112,8 @@ jobs:
       run:
         working-directory: apps/${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: "22" }
       - name: npm audit (Produktions-Abhängigkeiten)
         run: npm audit --omit=dev --audit-level=high
@@ -119,17 +122,17 @@ jobs:
     name: docker compose config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: cp .env.example .env && docker compose config > /dev/null && echo OK
 
   mermaid-lint:
     name: Mermaid echter Parser (mmdc)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.3.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with: { python-version: "3.12" }
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: "22" }
       - name: Mermaid-Blöcke extrahieren
         run: python scripts/mermaid_lint.py
@@ -148,7 +151,6 @@ jobs:
     name: Secret-Scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { fetch-depth: 0 }
-      # TODO auf Commit-SHA pinnen.
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
