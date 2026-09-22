@@ -102,18 +102,29 @@ CREATE POLICY outbox_tenant_isolation ON outbox
 -- Outbox-Consumer (WP4/Review Codex #13): mandantenübergreifende Zustellung durch den Worker.
 -- SECURITY DEFINER (Eigentümer = Bootstrap), damit der Worker über RLS hinweg zustellen kann,
 -- OHNE der App-Rolle BYPASSRLS zu geben. Atomarer Claim per FOR UPDATE SKIP LOCKED + Leasing.
+-- Review-Runde 4, Gemini (MITTEL): der Claim filterte nicht auf `attempts`. Bei einem HARTEN
+-- Worker-Crash (OOM/kill) läuft der catch-Block nicht, vv_outbox_fail wird nie gerufen -> das Lease
+-- läuft ab und dasselbe Giftelement wird endlos neu geholt. Jetzt: (1) Reaper verschiebt Einträge,
+-- die die Versuchsgrenze erreicht haben, DB-seitig in die DLQ (dead_at) — auch ohne vv_outbox_fail;
+-- (2) der Claim holt nur noch Einträge mit attempts < Grenze. Grenze = 5 (wie vv_outbox_fail-Default).
 CREATE OR REPLACE FUNCTION vv_outbox_claim(max_rows int DEFAULT 10)
-RETURNS SETOF outbox LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  UPDATE outbox SET locked_until = now() + interval '1 minute', attempts = attempts + 1
-  WHERE id IN (
-    SELECT id FROM outbox
-    WHERE processed_at IS NULL AND dead_at IS NULL          -- DLQ-Einträge nie erneut claimen
-      AND (locked_until IS NULL OR locked_until < now())
-    ORDER BY created_at
-    FOR UPDATE SKIP LOCKED
-    LIMIT max_rows)
-  RETURNING *;
-$$;
+RETURNS SETOF outbox LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- (1) Reaper: über der Versuchsgrenze -> DLQ, unabhängig davon ob vv_outbox_fail lief.
+  UPDATE outbox SET dead_at = now(), last_error = coalesce(last_error, 'max attempts (hard crash reaper)')
+    WHERE processed_at IS NULL AND dead_at IS NULL AND attempts >= 5;
+  -- (2) Claim nur unterhalb der Grenze.
+  RETURN QUERY
+    UPDATE outbox SET locked_until = now() + interval '1 minute', attempts = attempts + 1
+    WHERE id IN (
+      SELECT id FROM outbox
+      WHERE processed_at IS NULL AND dead_at IS NULL AND attempts < 5
+        AND (locked_until IS NULL OR locked_until < now())
+      ORDER BY created_at
+      FOR UPDATE SKIP LOCKED
+      LIMIT max_rows)
+    RETURNING *;
+END $$;
 
 CREATE OR REPLACE FUNCTION vv_outbox_done(p_id uuid)
 RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$

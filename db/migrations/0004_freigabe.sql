@@ -58,4 +58,40 @@ RETURNS uuid LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   RETURNING id;
 $$;
 REVOKE ALL ON FUNCTION vv_consume_approval(text, text) FROM PUBLIC;
--- EXECUTE-Grant folgt in 0005 (nach Rollen-Existenz).
+
+-- Review-Runde 4, Codex + Gemini (HOCH): `approved_by` war ein von vv_app frei schreibbarer String
+-- -> ein kompromittiertes Web-Layer konnte einen beliebigen fremden Freigeber-Namen eintragen.
+-- Jetzt wird die ENTSCHEIDUNG nur über diese Funktion gefällt: der Freigeber wird DB-seitig aus dem
+-- transaktionsgebundenen Actor-Claim `app.actor` gesetzt (analog zu app.tenant_id, aus verifizierten
+-- OIDC-Claims am Entscheidungs-Endpunkt) — NICHT aus dem Request-Body. vv_app verliert das direkte
+-- UPDATE-Recht auf status/approved_by (0005). Antragsteller != Freigeber wird hier UND per CHECK erzwungen.
+CREATE OR REPLACE FUNCTION vv_decide_approval(p_id uuid, p_decision text, p_reviewer_model text DEFAULT NULL)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_actor text; v_req text;
+BEGIN
+  v_actor := nullif(current_setting('app.actor', true), '');
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'kein app.actor gesetzt — Freigeber-Identität unbekannt (deny-by-default)';
+  END IF;
+  IF p_decision NOT IN ('approved','rejected') THEN
+    RAISE EXCEPTION 'ungültige Entscheidung: %', p_decision;
+  END IF;
+  SELECT requested_by INTO v_req FROM approval
+    WHERE id = p_id AND tenant_id = vv_current_tenant() AND status = 'pending'
+    FOR UPDATE;
+  IF v_req IS NULL THEN
+    RAISE EXCEPTION 'keine offene Freigabe % im aktuellen Mandanten', p_id;
+  END IF;
+  IF v_actor = v_req THEN
+    RAISE EXCEPTION 'Antragsteller darf nicht selbst freigeben (SoD, K27)';
+  END IF;
+  UPDATE approval SET
+    status         = p_decision,
+    approved_by    = CASE WHEN p_decision = 'approved' THEN v_actor ELSE approved_by END,
+    reviewer_model = coalesce(p_reviewer_model, reviewer_model),
+    decided_at     = now()
+  WHERE id = p_id;
+  RETURN p_id;
+END $$;
+REVOKE ALL ON FUNCTION vv_decide_approval(uuid, text, text) FROM PUBLIC;
+-- EXECUTE-Grants folgen in 0005 (nach Rollen-Existenz).

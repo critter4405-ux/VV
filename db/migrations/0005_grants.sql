@@ -13,11 +13,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON person, organisation, role_assignment TO
 -- Felder ändert ausschließlich der Worker über die SECURITY-DEFINER-Funktionen.
 GRANT SELECT, INSERT ON outbox TO vv_app;
 
--- Freigabe: vv_app darf Freigaben anlegen (Antrag) und die menschliche ENTSCHEIDUNG in genau den
--- Entscheidungsspalten setzen — NICHT `consumed_at`/`token`. Das Einlösen (Consume) läuft allein
--- über vv_consume_approval (SECURITY DEFINER) durch den Executor/Worker (Codex #1).
+-- Freigabe: vv_app darf Freigaben ANLEGEN (Antrag) und lesen. Die ENTSCHEIDUNG (status/approved_by)
+-- darf vv_app NICHT mehr direkt schreiben (Review-Runde 4, Codex + Gemini: freier approved_by-String
+-- war fälschbar). Sie läuft ausschließlich über vv_decide_approval (SECURITY DEFINER), das den
+-- Freigeber aus dem transaktionsgebundenen app.actor setzt. Consume läuft über vv_consume_approval.
 GRANT SELECT, INSERT ON approval TO vv_app;
-GRANT UPDATE (status, approved_by, reviewer_model, decided_at, expires_at) ON approval TO vv_app;
+-- KEIN GRANT UPDATE auf approval an vv_app (auch nicht spaltenweise).
+GRANT EXECUTE ON FUNCTION vv_decide_approval(uuid, text, text) TO vv_app;
 
 -- Audit: append-only (kein UPDATE/DELETE) — zusätzlich zum Block-Trigger aus 0003/0004.
 GRANT SELECT, INSERT ON audit_log, audit_anchor TO vv_app;

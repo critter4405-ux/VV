@@ -14,12 +14,18 @@ export async function withTenant<T>(
   client: PoolClient,
   tenantId: string,
   fn: () => Promise<T>,
+  actor?: string,
 ): Promise<T> {
   if (!tenantId) throw new Error("withTenant: leerer tenantId (deny-by-default)");
   await client.query("BEGIN");
   try {
     // SET LOCAL gilt nur innerhalb DIESER Transaktion -> RLS-Filter, pool-sicher.
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+    // Actor-Claim (Review-Runde 4): transaktionsgebunden, aus verifizierten OIDC-Claims. Die
+    // DB-Entscheidungs-Funktion vv_decide_approval nimmt den Freigeber HIERAUS, nie aus dem Body.
+    if (actor) {
+      await client.query("SELECT set_config('app.actor', $1, true)", [actor]);
+    }
     const result = await fn();
     await client.query("COMMIT");
     return result;

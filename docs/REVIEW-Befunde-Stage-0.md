@@ -156,3 +156,33 @@ Gegenprobe. Er läuft bei jedem Push gate-blockierend — das ist die unabhängi
 Bau-KI-seitig G1–G9 umgesetzt und gegen **echte PostgreSQL 16 + adversarial** verifiziert
 (`evidence/stage-0/round3-verification.md`). **Gate 0→1 bleibt gesperrt** bis zum **4.
 Fremdmodell-Review** (Codex + Gemini gegen diesen Stand) **und Betreiber-Freigabe**.
+
+---
+
+# Runde 4 — 4. Fremdmodell-Review + Reparaturrunde 4 (18.–22.09.2026)
+
+> **Codex** (harness-basiert; PASS=8/FAIL=28 waren Git-Bash-Pfadartefakte, kein Produkturteil — von
+> Codex so eingeordnet) und **Gemini** („nicht bestanden", aber dominiert von Upload-Truncation).
+> Beide sind auf **zwei** echten Befunden zusammengelaufen; konsolidierte Reparaturrunde 4 (H1/H2),
+> gegen echte PostgreSQL 16 verifiziert (`evidence/stage-0/round4-verification.md`).
+
+## Befunde Runde 4 → Fix
+
+| # | Schwere | Befund (Herkunft) | Fix | Verifiziert |
+|---|---------|-------------------|-----|-------------|
+| **H1** | hoch | `approved_by` war ein von vv_app frei schreibbarer String → fremder Freigeber-Name fälschbar (Codex + Gemini) | vv_app verliert direktes UPDATE auf approval; Entscheidung nur über `vv_decide_approval` (SECURITY DEFINER), Freigeber aus `app.actor` (transaktionsgebunden, verifizierte Claims), `app.actor <> requested_by` erzwungen; `withTenant(...,actor)` setzt app.actor | vv_app UPDATE approved_by → denied; ohne actor → ROT; actor==requester → ROT (SoD); fremder actor → approved_by=actor; Consume einmal, Replay ROT |
+| **H2** | mittel | `vv_outbox_claim` ohne `attempts`-Filter → bei HARTEM Crash (kein catch/`vv_outbox_fail`) endloser Re-Claim (Gemini) | Claim jetzt plpgsql: Reaper `dead_at=now() WHERE attempts>=5` (DLQ auch ohne vv_outbox_fail) + Claim nur `attempts<5` | Hard-Crash-Simulation: nach 5 Claims dead, kein Re-Claim |
+
+## Als Artefakt eingeordnet (kein Produktbefund)
+
+- Geminis KRITISCH „db.ts abgeschnitten / Build kaputt" + „TS-Dateien fehlen" = **Upload-Truncation**
+  (Teil 1 kam nur bis db.ts an). db.ts vollständig, Typecheck rc=0, Worker-Test 7/7, G1-Dateien vorhanden.
+- Codex „FAIL=28" = **Git-Bash-Pfad-Bug im Prüf-Harness** (globales MSYS_NO_PATHCONV brach die
+  Host-Pfad-Umwandlung); Harness korrigiert (WSL-Lauf empfohlen). Der unabhängige Linux-Live-Lauf ist
+  ohnehin der CI-Job `db-integration`.
+
+## Status nach Runde 4
+
+H1/H2 umgesetzt und gegen echte PostgreSQL 16 verifiziert. **Gate 0→1 bleibt gesperrt** bis
+erneutes Fremdmodell-Review gegen diesen Stand + Betreiber-Freigabe. Die zwei Prüfer haben in
+Runde 4 keine weiteren belastbaren neuen Produktbefunde geliefert.
