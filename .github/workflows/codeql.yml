@@ -1,0 +1,33 @@
+# VV — CodeQL (SAST). Tiefen-Sicherheitsanalyse zusätzlich zu den ADR-Validatoren.
+# Läuft bei Push/PR und wöchentlich. Findet Klassen von Schwachstellen (Injection, unsichere
+# Deserialisierung, Path-Traversal etc.), die die ADR-Validatoren nicht abdecken.
+name: codeql
+on:
+  push:
+    branches: [ main, "stage-*" ]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"   # wöchentlich Montag 03:00 UTC
+jobs:
+  analyze:
+    name: CodeQL Analyse
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ "javascript-typescript", "python" ]
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - name: CodeQL initialisieren
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
