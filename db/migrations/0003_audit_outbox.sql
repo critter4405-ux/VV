@@ -114,9 +114,18 @@ BEGIN
   -- Review-Runde 5, Gemini (Race): NUR Einträge mit ABGELAUFENEM Lease reapen — sonst würde ein
   -- gerade aktiv verarbeiteter 5. Versuch (Lease läuft noch) fälschlich als tot markiert, während
   -- ihn ein anderer Worker noch erfolgreich abschließt. Lease-Prüfung wie im Claim.
+  -- Pro-Nachprüfung 3.1 (Gemini, Restrisiko 1 — Lock-Contention): der Reaper griff die toten Zeilen
+  -- per breitem Prädikat-UPDATE ohne Zeilenreservierung; bei vielen gleichzeitigen Workern stauten
+  -- sich die Transaktionen auf denselben Zeilen (Row-Lock). Jetzt exakt wie der Claim: Kandidaten
+  -- via FOR UPDATE SKIP LOCKED gebündelt reservieren -> konkurrierende Reaper überspringen bereits
+  -- gehaltene Zeilen statt zu blockieren. LIMIT = max_rows (kein flächendeckendes UPDATE).
   UPDATE outbox SET dead_at = now(), last_error = coalesce(last_error, 'max attempts (hard crash reaper)')
-    WHERE processed_at IS NULL AND dead_at IS NULL AND attempts >= 5
-      AND (locked_until IS NULL OR locked_until < now());
+    WHERE id IN (
+      SELECT id FROM outbox
+      WHERE processed_at IS NULL AND dead_at IS NULL AND attempts >= 5
+        AND (locked_until IS NULL OR locked_until < now())
+      FOR UPDATE SKIP LOCKED
+      LIMIT max_rows);
   -- (2) Claim nur unterhalb der Grenze.
   RETURN QUERY
     UPDATE outbox SET locked_until = now() + interval '1 minute', attempts = attempts + 1
@@ -130,9 +139,16 @@ BEGIN
     RETURNING *;
 END $$;
 
+-- Erfolgreiche Zustellung. Pro-Nachprüfung 3.1 (Gemini, Restrisiko 2 — „Slow-Worker"-Doppelzustand):
+-- braucht ein Worker länger als das 1-Minuten-Lease und wird sein Element inzwischen vom Reaper als
+-- tot markiert (dead_at) — schließt er es danach doch noch erfolgreich ab, dürfen NICHT gleichzeitig
+-- dead_at UND processed_at gesetzt sein. Erfolg schlägt die Crash-Vermutung des Reapers: dead_at wird
+-- beim Spät-Erfolg mit abgeräumt (der Eintrag verlässt die DLQ, weil die Arbeit real erledigt ist).
+-- Damit ist der Endzustand eindeutig (genau processed_at gesetzt) und ein DLQ-Re-Drive kann keinen
+-- bereits erledigten Eintrag erneut ausführen. At-least-once + idempotency_key bleiben die Basis.
 CREATE OR REPLACE FUNCTION vv_outbox_done(p_id uuid)
 RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  UPDATE outbox SET processed_at = now(), locked_until = NULL WHERE id = p_id;
+  UPDATE outbox SET processed_at = now(), locked_until = NULL, dead_at = NULL WHERE id = p_id;
 $$;
 
 -- Fehlschlag: nach p_max Versuchen in die DLQ (dead_at), sonst Lease sofort freigeben (Retry).

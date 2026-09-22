@@ -71,5 +71,39 @@ q vv_worker >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',t
 DEAD=$(q vv_bootstrap <<<"SELECT (dead_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='ciif'")
 [ "$DEAD" = false ]; ck "H3: in-flight 5. Versuch NICHT fälschlich getötet" $?
 
+# Pro-Nachprüfung 3.1, Restrisiko 1 — Reaper mit FOR UPDATE SKIP LOCKED (keine Lock-Contention).
+# Eine reap-fähige (attempts=5, Lease abgelaufen) Zeile wird in einer Hintergrund-Transaktion
+# FOR UPDATE gehalten. Ein gleichzeitiger Claim/Reaper muss sie ÜBERSPRINGEN (nicht töten) UND
+# darf nicht auf ihr blockieren. Unter dem alten breiten UPDATE hätte der Claim ~4s blockiert.
+q vv_app >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); INSERT INTO outbox(tenant_id,topic,payload,idempotency_key) VALUES ('$AA','lk','{}','cilock'); COMMIT;"
+q vv_bootstrap >/dev/null 2>&1 <<<"UPDATE outbox SET attempts=5, locked_until=now()-interval '1 minute' WHERE idempotency_key='cilock';"
+q vv_bootstrap >/dev/null 2>&1 <<SQL &
+BEGIN; SELECT id FROM outbox WHERE idempotency_key='cilock' FOR UPDATE; SELECT pg_sleep(6); COMMIT;
+SQL
+BG=$!
+sleep 2
+T0=$(date +%s%N)
+q vv_worker >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT count(*) FROM vv_outbox_claim(5); COMMIT;"
+T1=$(date +%s%N)
+MS=$(( (T1 - T0) / 1000000 ))
+LOCKDEAD=$(q vv_bootstrap <<<"SELECT (dead_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='cilock'")
+wait "$BG" 2>/dev/null
+[ "$LOCKDEAD" = false ] && [ "$MS" -lt 3000 ]; ck "Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (${MS}ms)" $?
+q vv_worker >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT count(*) FROM vv_outbox_claim(5); COMMIT;"
+LOCKDEAD2=$(q vv_bootstrap <<<"SELECT (dead_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='cilock'")
+[ "$LOCKDEAD2" = true ]; ck "Reaper: nach Lock-Freigabe tote Zeile korrekt in DLQ" $?
+
+# Pro-Nachprüfung 3.1, Restrisiko 2 — kein „Slow-Worker"-Doppelzustand.
+# Zeile wird tot markiert (Reaper), danach schließt der langsame Worker doch erfolgreich ab:
+# Endzustand muss eindeutig sein (processed_at gesetzt, dead_at abgeräumt) — kein dead_at+processed_at.
+q vv_app >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); INSERT INTO outbox(tenant_id,topic,payload,idempotency_key) VALUES ('$AA','dz','{}','cidz'); COMMIT;"
+q vv_bootstrap >/dev/null 2>&1 <<<"UPDATE outbox SET attempts=5, locked_until=now()-interval '1 minute' WHERE idempotency_key='cidz';"
+q vv_worker >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT count(*) FROM vv_outbox_claim(5); COMMIT;"
+DZ1=$(q vv_bootstrap <<<"SELECT (dead_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='cidz'")
+DID=$(q vv_bootstrap <<<"SELECT id FROM outbox WHERE idempotency_key='cidz'" | grep -iE '^[0-9a-f-]{36}$' | head -1)
+q vv_worker >/dev/null 2>&1 <<<"SELECT vv_outbox_done('$DID')"
+DZ2=$(q vv_bootstrap <<<"SELECT (dead_at IS NULL)::text||'/'||(processed_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='cidz'")
+[ "$DZ1" = true ] && [ "$DZ2" = true/true ]; ck "Kein Doppelzustand: Spät-Erfolg räumt dead_at ab (tot=$DZ1 -> clean/done=$DZ2)" $?
+
 echo "----"
 [ "$FAIL" = 0 ] && echo "Alle Sicherheits-Gegenproben grün." || { echo "SICHERHEITS-GEGENPROBE FEHLGESCHLAGEN"; exit 1; }

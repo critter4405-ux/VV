@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-22T13:17:40.375285+00:00",
+  "generated_at": "2026-09-22T13:58:21.862698+00:00",
   "stage": 0,
-  "live_db": false,
-  "require_live": false,
+  "live_db": true,
+  "require_live": true,
   "checks": [
     {
       "adr": "ADR-09",
@@ -526,22 +526,64 @@
     {
       "adr": "ADR-01",
       "name": "LIVE: RLS/Rollen effektiv (echte PostgreSQL)",
-      "status": "skip",
-      "passed": false,
-      "skipped": true,
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
       "findings": [
         {
           "rule": "ADR-01",
-          "ok": false,
-          "skipped": true,
-          "detail": "übersprungen: kein VV_VALIDATE_DSN (lokal; im Gate via VV_REQUIRE_LIVE erzwungen)"
+          "ok": true,
+          "skipped": false,
+          "detail": "vv_app: NOSUPERUSER + NOBYPASSRLS"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "approval: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_anchor: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_log: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "organisation: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "outbox: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "person: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_assignment: force=True, policies=1"
         }
       ]
     }
   ],
   "static_passed": true,
-  "gate_passed": false,
-  "passed": false,
+  "gate_passed": true,
+  "passed": true,
   "total_failures": 0,
-  "total_skipped": 1
+  "total_skipped": 0
 }
