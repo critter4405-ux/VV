@@ -39,7 +39,7 @@ Die **fachliche Mitgliedschaft** auf Basis der Person (BASIS-01): wer ist auf we
 
 ## 4. Wie umgesetzt
 
-- **Migrationen** (idempotent, atomar): [0006 BASIS-02-Kern](../../db/migrations/0006_rbac_core.sql) · [0007 M05-Schema](../../db/migrations/0007_m05_schema.sql) · [0008 M05-Funktionen](../../db/migrations/0008_m05_functions.sql) · [0009 Freigabe-INSERT-Härtung](../../db/migrations/0009_approval_insert_hardening.sql) · Seed [0002 synthetisch](../../db/seed/0002_m05_synthetic.sql).
+- **Migrationen** (idempotent, atomar): [0006 BASIS-02-Kern](../../db/migrations/0006_rbac_core.sql) · [0007 M05-Schema](../../db/migrations/0007_m05_schema.sql) · [0008 M05-Funktionen](../../db/migrations/0008_m05_functions.sql) · [0009 Freigabe-INSERT-Härtung](../../db/migrations/0009_approval_insert_hardening.sql) · [0010 Outbox-Topic-Schutz](../../db/migrations/0010_outbox_topic_guard.sql) · Seed [0002 synthetisch](../../db/seed/0002_m05_synthetic.sql).
 - **Tabellen (M05):** `membership_category`, `membership_end_reason` (global) · `membership_type`, `membership_type_version`, `member`, `membership_period`, `membership_status_history`, `membership_type_assignment`, `membership_proposal`, `m05_settings`, `m05_approval_request`, `m05_import_batch` (alle `tenant_id` + ENABLE/FORCE RLS + Policy, zusammengesetzte FKs).
 - **Tabellen (BASIS-02):** `role_type`, `role_permission`, `sod_rule` (global) · `scope_node`, `principal_link`; `role_assignment` erweitert (Scope-FK, Widerruf, SoD-Trigger).
 - **Befehle (vv_app):** `m05_type_create/new_version`, `m05_settings_update`, `m05_apply/admit/reject/suspend/resume/change_type/withdraw_notice`, `m05_request_termination`, `m05_decide`, `m05_decide_proposal`, `m05_import_request/decide`; Lesen `m05_list_members`, `m05_get_member`, `m05_export_members`, `m05_pending_approvals`; BASIS-02 `rbac_assign_role/revoke_role/create_scope_node`.
@@ -52,7 +52,7 @@ Die **fachliche Mitgliedschaft** auf Basis der Person (BASIS-01): wer ist auf we
 
 ## 5. Wie getestet
 
-- **Gegenproben gegen echte PostgreSQL 16 (adversarial):** [scripts/m05_db_asserts.py](../../scripts/m05_db_asserts.py) — **115/115**; aufgerufen aus [ci_db_asserts.sh](../../scripts/ci_db_asserts.sh) (Stage-0-Proben + neue S0-1/S0-2) — Nachweis: [evidence/m05/db-asserts.txt](../../evidence/m05/db-asserts.txt).
+- **Gegenproben gegen echte PostgreSQL 16 (adversarial):** [scripts/m05_db_asserts.py](../../scripts/m05_db_asserts.py) — **122/122**; aufgerufen aus [ci_db_asserts.sh](../../scripts/ci_db_asserts.sh) (Stage-0-Proben + neue S0-1/S0-2) — Nachweis: [evidence/m05/db-asserts.txt](../../evidence/m05/db-asserts.txt).
 - **Validatoren LIVE (gate-blockierend):** [evidence/m05/validator-report.json](../../evidence/m05/validator-report.json); **Selbsttest** 12/12 (inkl. neuer Umgehungsproben).
 - **Unit- + Integrationstests:** Web 17/17 (Policy-Prüfpunkt, Validierung, API end-to-end gegen DB), Worker 12/12 (Vier-Augen-Adversarial, Executor, Outbox → Worker → Wirkung genau einmal) — [evidence/m05/tests.txt](../../evidence/m05/tests.txt).
 - **Gesamtnachweis + Akzeptanzkriterien AK-01…AK-12:** [evidence/m05/verification.md](../../evidence/m05/verification.md) · Checkliste DoD: [evidence/m05/gate-m05-checklist.md](../../evidence/m05/gate-m05-checklist.md).
@@ -62,7 +62,8 @@ Die **fachliche Mitgliedschaft** auf Basis der Person (BASIS-01): wer ist auf we
 - **Mandantentrennung:** RLS FORCE auf allen 14 neuen mandantenbezogenen Tabellen; Definer-Rolle ohne BYPASSRLS; Isolationstests (A ≠ B, fremder Actor, fremder Worker-Kontext, Cross-Tenant-FK).
 - **Deny-by-default:** ohne Tenant, Actor, Principal oder passende Rolle × Scope × Datenklasse kein Zugriff; Systemakteure haben keine Rollen; keine M05/RBAC-Funktion für PUBLIC ausführbar.
 - **Vier-Augen:** Selbst-Freigabe, fremder/abgelaufener/ungebundener Antrag, Parameter-Tausch, Replay, Freigeber ohne (weiterhin gültiges) Recht → verweigert; Fehler → Rollback, Freigabe bleibt unverbraucht.
-- **Stage-0-Befunde, im M05-Bau entdeckt und geschlossen (Migration 0009):** **S0-1** `vv_app` konnte eine bereits „genehmigte" Freigabe direkt EINFÜGEN (status/approved_by frei) · **S0-2** `requested_by` frei setzbar (Antragsteller-Spoofing). Jetzt normalisiert ein BEFORE-INSERT-Trigger jede neue Freigabe auf `pending`; für die Web-Rolle gilt `requested_by = app.actor`. Zwei neue gate-blockierende Gegenproben.
+- **Stage-0-Befunde, im M05-Bau entdeckt und geschlossen (Migrationen 0009/0010):** **S0-1** `vv_app` konnte eine bereits „genehmigte" Freigabe direkt EINFÜGEN (status/approved_by frei) · **S0-2** `requested_by` frei setzbar (Antragsteller-Spoofing). Jetzt normalisiert ein BEFORE-INSERT-Trigger jede neue Freigabe auf `pending`; für die Web-Rolle gilt `requested_by = app.actor`. Zwei neue gate-blockierende Gegenproben. **S0-3** `vv_app` konnte M05-/BASIS-02-Events in die Outbox fälschen → Migration 0010 (reservierte Topics nur aus Fachfunktionen).
+- **Freigabe-Objekt ohne Klartext-Parameter:** `approval.context` (für `vv_app` lesbar) trägt nur den Parameter-Hash; Se-Angaben (Ausschlussgrund) liegen ausschließlich im geschützten Antrag.
 - **Datenklassen:** Mitgliedsart Ö; Status/Daten/Nummer/Austrittsgrund S; Ausschlussgrund + Beschluss-Ref. Se; Export nie Se; Outbox/Audit ohne Klartext-Personenbezug (geprüft).
 - **Q01/Art. 18/Löschung:** Sperre nach Beendigung, Anonymisierung nur mit Vier-Augen nach Fristablauf; Hash-Kette bleibt intakt (verifiziert).
 - **Audit:** jede Zustandsänderung, jede Verweigerung am Prüfpunkt, jede versuchte SoD-Verletzung.
@@ -97,4 +98,4 @@ Der Verein weiß jederzeit, wer seit wann in welcher Art Mitglied ist — mit l�
 
 ## 9. Änderungshistorie
 
-- 24.09.2026 — v1.0: M05 Phase 1 gebaut (Bau-KI Opus 5.5) nach Grill P50 (13 Entscheidungen); BASIS-02-Kern mitgebaut; Stage-0-Befunde S0-1/S0-2 geschlossen; Validator-Härtung ADR-01 (Statement-Reihenfolge) + ADR-04 (je Aktion, Fachbefehle); Vereinsplaner-Mapping v1. **Review + Freigabe ausstehend.**
+- 24.09.2026 — v1.0: M05 Phase 1 gebaut; Selbstcheck vor Review: S0-3 (Outbox-Spoofing), M-1 (Se im Freigabe-Objekt), M-2 (gesperrt in Detailansicht) geschlossen (Bau-KI Opus 5.5) nach Grill P50 (13 Entscheidungen); BASIS-02-Kern mitgebaut; Stage-0-Befunde S0-1/S0-2 geschlossen; Validator-Härtung ADR-01 (Statement-Reihenfolge) + ADR-04 (je Aktion, Fachbefehle); Vereinsplaner-Mapping v1. **Review + Freigabe ausstehend.**

@@ -6,7 +6,7 @@
 
 ## Prüfgegenstand
 
-- **Migrationen:** `db/migrations/0006_rbac_core.sql` (BASIS-02-Kern), `0007_m05_schema.sql`, `0008_m05_functions.sql`, `0009_approval_insert_hardening.sql`; Seed `db/seed/0002_m05_synthetic.sql`.
+- **Migrationen:** `db/migrations/0006_rbac_core.sql` (BASIS-02-Kern), `0007_m05_schema.sql`, `0008_m05_functions.sql`, `0009_approval_insert_hardening.sql`, `0010_outbox_topic_guard.sql`; Seed `db/seed/0002_m05_synthetic.sql`.
 - **App:** `apps/web/src/platform/policy.ts`, `apps/web/src/modules/mitglieder/*`, `apps/web/src/index.ts`.
 - **Worker:** `apps/worker/src/jobs/m05.ts`, `apps/worker/src/index.ts`, `apps/worker/src/agents/effects.ts`.
 - **Prüfwerkzeuge:** `validators/checks/adr01_rls.py`, `adr04_policy.py`, `validators/selftest.py`, `scripts/m05_db_asserts.py`, `scripts/ci_db_asserts.sh`, `.github/workflows/ci.yml`.
@@ -16,7 +16,7 @@
 ## Reproduzierbarer Live-Lauf (Pflicht, unabhängig)
 
 - **Codex (Docker, am besten in WSL):** aus dem Repo-Root `bash scripts/review_m05.sh`. Das Skript arbeitet read-only auf einer Temp-Kopie, startet eine frische PostgreSQL 16, spielt Migrationen + Seeds ein und führt Validatoren (LIVE), Selbsttest, DB-Gegenproben (Stage 0 + M05), Typechecks und Tests aus. Es liefert je Probe PASS/FAIL, das Urteil ziehst du.
-- **Gemini (statisch):** Die Quelltexte liegen als nummerierte Bundle-Dateien bei (`VV_M05_Review_Teil1.md` … `Teil7.md`). Bitte bestätige zuerst, dass jedes Bundle bis zur Endmarke `=== ENDE TEIL n ===` vollständig angekommen ist. Ohne vollständigen Upload ist kein Befund zu „fehlenden/abgeschnittenen" Dateien zulässig.
+- **Gemini (statisch):** Die Quelltexte liegen als nummerierte Bundle-Dateien bei (`VV_M05_Review_Teil1.md` … letzter Teil laut Kopfzeile „Teil n/N“). Bitte bestätige zuerst, dass jedes Bundle bis zur Endmarke `=== ENDE TEIL n ===` vollständig angekommen ist. Ohne vollständigen Upload ist kein Befund zu „fehlenden/abgeschnittenen" Dateien zulässig.
 
 ## Prüfpunkte (mindestens)
 
@@ -29,7 +29,7 @@
 7. **Datenschutz (K31, Q01):** Stimmen Aufbewahrung (mind. 7 J.), Sperre (Art. 18) und Anonymisierung? Bleibt die Hash-Kette intakt? Kommen echte Daten ins Repo? Enthält das Vereinsplaner-Mapping nur Spaltennamen?
 8. **Import (Q05-Schnittstelle):** Ist der Import an die freigegebenen Zeilen gebunden (Hash, Anzahl)? Ist er idempotent und überschreibt nie? Gibt es Konflikt-Reports ohne Klartext?
 9. **Validatoren/Tests:** Sind die Validator-Änderungen (ADR-01 Reihenfolge, ADR-04 je Aktion und Fachbefehle) korrekt oder umgehbar? Prüfen die Gegenproben das Behauptete wirklich (keine geschönten Nachweise)? Bleiben die Stage-0-Invarianten und -Gegenproben grün?
-10. **Stage-0-Nachhärtung (Migration 0009, S0-1/S0-2):** Ist der Befund korrekt beschrieben und der Fix vollständig? Bricht er einen Stage-0-Pfad?
+10. **Stage-0-Nachhärtung (Migrationen 0009/0010, S0-1/S0-2/S0-3):** Ist der Befund korrekt beschrieben und der Fix vollständig? Bricht er einen Stage-0-Pfad?
 11. **Bau-Dossier (K29):** Sind die 9 Abschnitte vollständig, das Diagramm valide und die Evidenz-Links real?
 
 ## Rückgabe (Format)

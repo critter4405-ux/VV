@@ -338,10 +338,12 @@ BEGIN
     END IF;
   END LOOP;
   v_hash := encode(digest(convert_to(p_payload::text, 'UTF8'), 'sha256'), 'hex');
+  -- Im (für vv_app lesbaren) Freigabe-Objekt steht NUR der Hash — die Parameter (ggf. Se, z. B.
+  -- Ausschlussgrund) liegen im geschützten Antrag (m05_approval_request), Sicht nur feldgefiltert.
   INSERT INTO approval (tenant_id, kind, effect_id, subject_ref, requested_by, builder_model, context, expires_at)
   VALUES (vv_current_tenant(), p_kind, p_effect, p_period::text, p_requested_by,
           CASE WHEN p_requested_by LIKE 'system:%' THEN 'system:m05-job' ELSE 'human:manuell' END,
-          p_payload, now() + interval '30 days')
+          jsonb_build_object('payload_sha256', v_hash, 'effect', p_effect), now() + interval '30 days')
   RETURNING id INTO v_app;
   INSERT INTO m05_approval_request (approval_id, tenant_id, period_id, effect_id, requested_by, payload, payload_hash, period_version)
   VALUES (v_app, vv_current_tenant(), p_period, p_effect, p_requested_by, p_payload, v_hash, p_period_version);
@@ -471,7 +473,7 @@ BEGIN
   SELECT * INTO a FROM approval WHERE tenant_id = vv_current_tenant() AND id = p_approval;
   -- Bindung Antrag <-> Freigabe (gegen direkt eingefügte/umgeschriebene approval-Zeilen)
   IF a.effect_id <> x.effect_id OR a.subject_ref <> x.period_id::text OR a.requested_by <> x.requested_by
-     OR encode(digest(convert_to(a.context::text, 'UTF8'), 'sha256'), 'hex') <> x.payload_hash
+     OR a.context->>'payload_sha256' IS DISTINCT FROM x.payload_hash
      OR encode(digest(convert_to(x.payload::text, 'UTF8'), 'sha256'), 'hex') <> x.payload_hash THEN
     RAISE EXCEPTION 'M05: Freigabe passt nicht zum gebundenen Antrag (Manipulation) — verweigert';
   END IF;
@@ -921,8 +923,8 @@ BEGIN
     'visible_classes', to_jsonb(array_remove(ARRAY['Oe', CASE WHEN s THEN 'S' END, CASE WHEN se THEN 'Se' END], NULL)))
   INTO v
   FROM membership_period p
-  WHERE p.tenant_id = vv_current_tenant() AND p.member_id = p_member AND p.status <> 'anonymisiert'
-    AND (p.status <> 'gesperrt' OR s);
+  WHERE p.tenant_id = vv_current_tenant() AND p.member_id = p_member
+    AND p.status NOT IN ('anonymisiert', 'gesperrt');   -- Art. 18: gesperrt nur mit Zweck (Liste/Export)
   PERFORM vv_audit_write('m05.member.read', p_member::text, '{}'::jsonb);
   RETURN v;
 END $$;

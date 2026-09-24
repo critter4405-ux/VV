@@ -1,11 +1,11 @@
 # M05 „Mitglieder" — Verifikation (Bau-KI, Phase B)
 
-> **Stand:** 24.09.2026 · **Bau-KI:** Claude Code + Opus 5.5 · **Umgebung:** echte PostgreSQL 16.13, frisch aufgesetzt (Migrationen 0001–0009 + synthetische Seeds), wie CI-Job `db-integration`.
+> **Stand:** 24.09.2026 · **Bau-KI:** Claude Code + Opus 5.5 · **Umgebung:** echte PostgreSQL 16.13, frisch aufgesetzt (Migrationen 0001–0010 + synthetische Seeds), wie CI-Job `db-integration`.
 > **Wichtig:** Das hier ist der Nachweis der **Bau-KI**. Das unabhängige Vier-Augen-Review (Codex + Gemini) wiederholt die Prüfung selbst und übernimmt diese Nachweise **nicht**.
 
 ## Ergebnis auf einen Blick
 
-- **DB-Gegenproben:** M05/BASIS-02 **115/115** + Stage-0-Sicherheitsproben **17/17** (inkl. neuer S0-1/S0-2) — [db-asserts.txt](db-asserts.txt), maschinenlesbar [db-asserts.json](db-asserts.json).
+- **DB-Gegenproben:** M05/BASIS-02 **122/122** + Stage-0-Sicherheitsproben **17/17** (inkl. neuer S0-1/S0-2) — [db-asserts.txt](db-asserts.txt), maschinenlesbar [db-asserts.json](db-asserts.json).
 - **Validatoren LIVE:** alle 10 Checks PASS, `gate_passed=true` — [validator-report.json](validator-report.json).
 - **Validator-Selbsttest:** 12/12 (5 neue Umgehungsproben) — [tests.txt](tests.txt).
 - **Tests:** Web 17/17 (inkl. API end-to-end gegen DB), Worker 12/12 (inkl. Outbox → Worker → Wirkung genau einmal); Typecheck web/worker rc=0; `npm audit` 0; `docker compose config` valide (5 Dienste).
@@ -31,6 +31,9 @@
 
 - **S0-1 (hoch, Stage 0):** `vv_app` konnte eine Freigabe mit `status='approved'`, beliebigem `approved_by`, `decided_at` direkt **einfügen** (H1 hatte nur UPDATE gesperrt). Fix: Migration 0009, BEFORE-INSERT-Trigger normalisiert auf `pending`. Gegenprobe in `ci_db_asserts.sh` + `m05_db_asserts.py`.
 - **S0-2 (mittel, Stage 0):** `requested_by` frei setzbar → Antragsteller-Spoofing umging die SoD. Fix: für die Web-Rolle `requested_by = app.actor` (Trigger). Gegenprobe wie oben.
+- **S0-3 (mittel, Stage 0 × M05):** `vv_app` durfte beliebige Events in die Outbox schreiben → M05-/BASIS-02-Events (`m05.execute`, `m05.membership.ended`, …) fälschbar. Fix: Migration 0010, reservierte Topic-Präfixe nur aus den Fachfunktionen. Gegenprobe (3 Topics).
+- **M-1 (hoch, eigener Bau, vor dem Review gefunden):** Das für `vv_app` lesbare Freigabe-Objekt (`approval.context`) enthielt die Antragsparameter im Klartext, darunter bei Ausschluss den Se-Grund. Fix: dort nur noch der Parameter-Hash; Parameter liegen im geschützten Antrag, Sicht nur feldgefiltert. Gegenproben: Kontext enthält nur Hash; Manipulation von Antrag **oder** Hash wird erkannt.
+- **M-2 (mittel, eigener Bau):** Detailansicht zeigte gesperrte Perioden ohne Zweckangabe. Fix: gesperrt nur über Liste/Export mit Zweck. Gegenproben.
 - **V-1 (mittel, Validator ADR-01):** Statement-Reihenfolge je Datei ignoriert → idempotentes `DROP POLICY IF EXISTS; CREATE POLICY` galt als fehlend. Fix: textuelle Reihenfolge; Selbsttest für beide Richtungen.
 - **V-2 (mittel, Validator ADR-04):** nur der erste Guard je Datei geprüft; DB-Fachbefehle (`SELECT m05_…()`) nicht als Schreibzugriff erkannt. Fix: Prüfung je exportierter Aktion inkl. lokaler Helfer; Fachbefehle nur in `*.action.ts`. Selbsttest für 3 Umgehungen.
 

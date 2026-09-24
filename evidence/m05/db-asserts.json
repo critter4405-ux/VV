@@ -1,10 +1,10 @@
 {
-  "run": "aa8929",
+  "run": "58a0ed",
   "passed": true,
-  "total": 115,
+  "total": 122,
   "results": [
     {
-      "name": "Migrationen 0006–0009 idempotent (erneuter Lauf fehlerfrei)",
+      "name": "Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)",
       "ok": true
     },
     {
@@ -164,6 +164,10 @@
       "ok": true
     },
     {
+      "name": "für vv_app lesbares Freigabe-Objekt enthält nur den Parameter-Hash",
+      "ok": true
+    },
+    {
       "name": "kein zweiter paralleler Beendigungsantrag",
       "ok": true
     },
@@ -212,11 +216,27 @@
       "ok": true
     },
     {
+      "name": "Umschreiben des Hashes im Freigabe-Objekt erkannt -> verweigert",
+      "ok": true
+    },
+    {
       "name": "S0-1: direkt eingefügte Freigabe startet immer als pending (kein Fälschen von 'approved')",
       "ok": true
     },
     {
       "name": "S0-2: Antragsteller-Spoofing (requested_by ≠ app.actor) abgewiesen",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'm05.execute' nicht in die Outbox schreiben",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'm05.membership.ended' nicht in die Outbox schreiben",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'basis02.role.assigned' nicht in die Outbox schreiben",
       "ok": true
     },
     {
@@ -317,6 +337,14 @@
     },
     {
       "name": "gesperrte Periode nicht in normaler Liste",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Periode auch nicht in der Detailansicht (nur mit Zweck über Liste/Export)",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Periode mit Zweckangabe für berechtigte Rolle sichtbar",
       "ok": true
     },
     {

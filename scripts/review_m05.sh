@@ -3,7 +3,7 @@
 # VV M05 — Fremdmodell-Review-Harness, READ-ONLY (Vier-Augen, Phase C)
 # Unabhängiger Live-Lauf gegen eine FRISCHE PostgreSQL 16 im Docker-Container.
 # Auf dem Host wird NUR Docker gebraucht. Container:
-#   vv_m05_pg   postgres:16      — Datenbank (Migrationen 0001–0009 + synthetische Seeds)
+#   vv_m05_pg   postgres:16      — Datenbank (Migrationen 0001–0010 + synthetische Seeds)
 #   vv_m05_py   python:3.12      — Validatoren LIVE, Selbsttest, DB-Gegenproben (psql + psycopg)
 #   vv_m05_node node:22          — Typechecks + Unit-/Integrationstests Web/Worker
 # Der reale Repo-Baum wird NICHT verändert (Arbeit in einer Temp-Kopie, Übertragung per docker cp).
@@ -41,7 +41,7 @@ git -C "$REPO_SRC" status --porcelain 2>/dev/null | grep -v '^?? review-m05-out'
 cp -r "$REPO_SRC" "$WORK/repo"
 rm -rf "$WORK/repo/.git" "$WORK/repo/review-m05-out" "$WORK/repo/apps/"*/node_modules 2>/dev/null
 
-hd "1) Frische PostgreSQL 16 + Migrationen 0001–0009 + Seeds"
+hd "1) Frische PostgreSQL 16 + Migrationen 0001–0010 + Seeds"
 docker rm -f "$PGC" "$PYC" "$NDC" >/dev/null 2>&1; docker network rm "$NET" >/dev/null 2>&1
 docker network create "$NET" >/dev/null
 docker run -d --name "$PGC" --network "$NET" -p "127.0.0.1:$PORT:5432" \
@@ -95,8 +95,8 @@ done
 
 hd "4) Zusatz: Migrationen ein zweites Mal (Idempotenz) + RLS ohne Kontext"
 RE=$(docker exec -e PGPASSWORD="$PW" "$PGC" bash -c '
-  for f in /db/migrations/000[6-9]*.sql; do psql -q -v ON_ERROR_STOP=1 -U vv_bootstrap -d vv -f "$f" >/dev/null || exit 1; done; echo OK' 2>&1)
-[ "$RE" = "OK" ] && ok "0006–0009 erneut fehlerfrei (idempotent)" || no "Idempotenz: $RE"
+  for f in /db/migrations/000[6-9]*.sql /db/migrations/001[0-9]*.sql; do psql -q -v ON_ERROR_STOP=1 -U vv_bootstrap -d vv -f "$f" >/dev/null || exit 1; done; echo OK' 2>&1)
+[ "$RE" = "OK" ] && ok "0006–0010 erneut fehlerfrei (idempotent)" || no "Idempotenz: $RE"
 for t in member membership_period m05_approval_request scope_node principal_link; do
   N=$(docker exec -e PGPASSWORD="$PW" "$PGC" psql -tA -h 127.0.0.1 -U vv_app -d vv -c "SELECT count(*) FROM $t" 2>&1)
   echo "$N" | grep -qiE "permission denied|^0$" && ok "vv_app ohne Kontext auf $t: $(echo "$N" | head -c 40)" || no "vv_app sieht $t: $N"

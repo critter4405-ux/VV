@@ -132,10 +132,11 @@ def main() -> int:
     # ---------------------------------------------------------------- Migrationen idempotent (DoD 2)
     env = dict(os.environ, PGPASSWORD=PW)
     rc = 0
-    for f in sorted((REPO / "db" / "migrations").glob("000[6-9]*.sql")):
+    for f in sorted((REPO / "db" / "migrations").glob("00[01][0-9]*.sql")):
+        if f.name < "0006": continue
         rc |= subprocess.run(["psql", "-q", "-v", "ON_ERROR_STOP=1", "-h", HOST, "-U", "vv_bootstrap", "-d", "vv",
                               "-f", str(f)], env=env, capture_output=True).returncode
-    check("Migrationen 0006–0009 idempotent (erneuter Lauf fehlerfrei)", rc == 0)
+    check("Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)", rc == 0)
 
     # ---------------------------------------------------------------- Rollen/Grants (AK-08)
     r = one(BOOT, "SELECT rolsuper::text||rolbypassrls::text FROM pg_roles WHERE rolname='vv_definer'", tenant=None)
@@ -239,9 +240,12 @@ def main() -> int:
     appr = one(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),'umzug',NULL,NULL,NULL,%s)",
                (per_kurt, version(per_kurt)), actor=SCHRIFT)
     exp_eff = one(APP, "SELECT m05_notice_date(m05_today(), 1, 'jahresende')", actor=SCHRIFT)
-    ctx = one(BOOT, "SELECT context FROM approval WHERE id=%s", (appr,))
+    ctx = one(BOOT, "SELECT payload FROM m05_approval_request WHERE approval_id=%s", (appr,))
     check("Antrag erzeugt NUR Freigabe-Objekt; Stichtag aus Regel (Frist 1 M., Jahresende)",
           status(per_kurt) == "aktiv" and ctx["effective_date"] == str(exp_eff), str(ctx))
+    actx = one(APP, "SELECT context FROM approval WHERE id=%s", (appr,), actor=SCHRIFT)
+    check("für vv_app lesbares Freigabe-Objekt enthält nur den Parameter-Hash", set(actx) == {"payload_sha256", "effect"},
+          str(actx))
     e = err(lambda: run(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),NULL,NULL,NULL,NULL,%s)",
                         (per_kurt, version(per_kurt)), actor=OBMANN))
     check("kein zweiter paralleler Beendigungsantrag", "bereits ein Antrag offen" in e, e)
@@ -271,13 +275,18 @@ def main() -> int:
     check("Selbst-Freigabe (Antragsteller = Freigeber) abgewiesen", "nicht selbst freigeben" in e, e)
     # Parameter-Tausch nach Antrag (Manipulation am Freigabe-Objekt)
     run(APP, "SELECT m05_decide(%s,'approved')", (appr_f,), actor=VORSTAND)
-    run(BOOT, "UPDATE approval SET context = jsonb_set(context,'{effective_date}','\"2000-01-01\"') WHERE id=%s", (appr_f,))
+    run(BOOT, "UPDATE m05_approval_request SET payload = jsonb_set(payload,'{effective_date}','\"2000-01-01\"') "
+              "WHERE approval_id=%s", (appr_f,))
     e = err(lambda: execute(appr_f))
     check("Parameter-Tausch nach Freigabe erkannt (Hash-Bindung) -> verweigert", "Manipulation" in e, e)
     check("…und die Freigabe wurde dabei NICHT verbraucht (Rollback)",
           one(BOOT, "SELECT consumed_at IS NULL FROM approval WHERE id=%s", (appr_f,)) is True)
-    run(BOOT, "UPDATE approval SET context = (SELECT payload FROM m05_approval_request WHERE approval_id=%s) WHERE id=%s",
-        (appr_f, appr_f))
+    orig = one(BOOT, "SELECT context->>'payload_sha256' FROM approval WHERE id=%s", (appr_f,))
+    run(BOOT, "UPDATE approval SET context = jsonb_set(context,'{payload_sha256}','\"00\"') WHERE id=%s", (appr_f,))
+    e = err(lambda: execute(appr_f))
+    check("Umschreiben des Hashes im Freigabe-Objekt erkannt -> verweigert", "Manipulation" in e, e)
+    run(BOOT, "UPDATE approval SET context = jsonb_set(context,'{payload_sha256}', to_jsonb(%s::text)) WHERE id=%s",
+        (orig, appr_f))
 
     # Gefälschte Freigabe direkt eingefügt (S0-1/S0-2) + nicht über m05_request_* entstanden
     forged = one(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,status,approved_by,decided_at) "
@@ -288,6 +297,10 @@ def main() -> int:
     e = err(lambda: run(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by) "
                              "VALUES (%s,'legal','m05.membership.terminate',%s,'jemand-anderes')", (AA, per_jonas), actor=SCHRIFT))
     check("S0-2: Antragsteller-Spoofing (requested_by ≠ app.actor) abgewiesen", "Spoofing" in e, e)
+    for topic in ("m05.execute", "m05.membership.ended", "basis02.role.assigned"):
+        e = err(lambda topic=topic: run(APP, "INSERT INTO outbox (tenant_id, topic, payload, idempotency_key) "
+                                             "VALUES (%s,%s,'{}',%s)", (AA, topic, f"spoof-{topic}-{RUN}"), actor=SCHRIFT))
+        check(f"Event-Spoofing verweigert: vv_app kann '{topic}' nicht in die Outbox schreiben", "reserviert" in e, e)
     run(APP, "SELECT vv_decide_approval(%s,'approved')", (forged,), actor=VORSTAND)  # Stage-0-Grant direkt
     e = err(lambda: execute(forged))
     check("Freigabe ohne gebundenen M05-Antrag ist nicht ausführbar", "kein geprüfter M05-Antrag" in e, e)
@@ -390,6 +403,12 @@ def main() -> int:
     check("Tagesjob idempotent (zweiter Lauf ändert nichts)", j2["ended"] == 0 and j2["locked"] == 0, str(j2))
     lst = row_for(SCHRIFT, per_kurt)
     check("gesperrte Periode nicht in normaler Liste", per_kurt not in lst)
+    mid = one(BOOT, "SELECT member_id FROM membership_period WHERE id=%s", (per_kurt,))
+    det = one(APP, "SELECT m05_get_member(%s)", (mid,), actor=OBMANN)
+    check("gesperrte Periode auch nicht in der Detailansicht (nur mit Zweck über Liste/Export)",
+          all(p["period_id"] != per_kurt for p in det["periods"]), str(det)[:200])
+    lk = run(APP, "SELECT period_id FROM m05_list_members(true, 'Aufbewahrungsprüfung Kassaprüfer 2026')", actor=OBMANN)
+    check("gesperrte Periode mit Zweckangabe für berechtigte Rolle sichtbar", any(r[0] == per_kurt for r in lk))
     e = err(lambda: run(APP, "SELECT * FROM m05_list_members(true, NULL)", actor=OBMANN))
     check("gesperrte Daten nur mit Zweckangabe", "Zweckangabe" in e, e)
     backdate(per_kurt, retention_until=today)

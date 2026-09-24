@@ -1,6 +1,6 @@
 # M05 — Sicherheits-/Fach-Gegenproben gegen echte PostgreSQL
-# Lauf: 2026-09-24 15:20 CEST · PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
-# Frische DB: Migrationen 0001–0009 + Seeds (nur synthetisch), dann scripts/ci_db_asserts.sh
+# Lauf: 2026-09-24 15:25 CEST · PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+# Frische DB: Migrationen 0001–0010 + Seeds (nur synthetisch), dann scripts/ci_db_asserts.sh
 
 == Sicherheits-Gegenproben ==
   [OK]  RLS: ohne Kontext 0, Mandanten isoliert (0/15/2)
@@ -18,11 +18,11 @@
   [OK]  Audit: TRUNCATE für Eigentümer blockiert
   [OK]  H2/H3: Hard-Crash-Giftelement in DLQ (5/true)
   [OK]  H3: in-flight 5. Versuch NICHT fälschlich getötet
-  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (48ms)
+  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (47ms)
   [OK]  Reaper: nach Lock-Freigabe tote Zeile korrekt in DLQ
   [OK]  Kein Doppelzustand: Spät-Erfolg räumt dead_at ab (tot=true -> clean/done=true/true)
-== M05/BASIS-02 DB-Gegenproben (Lauf aa8929) ==
-  [OK ] Migrationen 0006–0009 idempotent (erneuter Lauf fehlerfrei)
+== M05/BASIS-02 DB-Gegenproben (Lauf 58a0ed) ==
+  [OK ] Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)
   [OK ] vv_definer NOSUPERUSER + NOBYPASSRLS (RLS gilt in Definer-Funktionen)
   [OK ] vv_app hat keinen Direktzugriff auf member
   [OK ] vv_app hat keinen Direktzugriff auf membership_period
@@ -62,6 +62,7 @@
   [OK ] Ruhen + Wiederaufnahme (einfache Aktion)
   [OK ] Trainer darf keine Beendigung beantragen
   [OK ] Antrag erzeugt NUR Freigabe-Objekt; Stichtag aus Regel (Frist 1 M., Jahresende)
+  [OK ] für vv_app lesbares Freigabe-Objekt enthält nur den Parameter-Hash
   [OK ] kein zweiter paralleler Beendigungsantrag
   [OK ] Schriftführer (ohne Freigaberecht) kann nicht freigeben
   [OK ] Ausführung ohne Freigabe verweigert
@@ -74,8 +75,12 @@
   [OK ] Selbst-Freigabe (Antragsteller = Freigeber) abgewiesen
   [OK ] Parameter-Tausch nach Freigabe erkannt (Hash-Bindung) -> verweigert
   [OK ] …und die Freigabe wurde dabei NICHT verbraucht (Rollback)
+  [OK ] Umschreiben des Hashes im Freigabe-Objekt erkannt -> verweigert
   [OK ] S0-1: direkt eingefügte Freigabe startet immer als pending (kein Fälschen von 'approved')
   [OK ] S0-2: Antragsteller-Spoofing (requested_by ≠ app.actor) abgewiesen
+  [OK ] Event-Spoofing verweigert: vv_app kann 'm05.execute' nicht in die Outbox schreiben
+  [OK ] Event-Spoofing verweigert: vv_app kann 'm05.membership.ended' nicht in die Outbox schreiben
+  [OK ] Event-Spoofing verweigert: vv_app kann 'basis02.role.assigned' nicht in die Outbox schreiben
   [OK ] Freigabe ohne gebundenen M05-Antrag ist nicht ausführbar
   [OK ] Freigeber ohne (weiterhin gültiges) Freigaberecht -> Ausführung verweigert
   [OK ] Antrag nach Änderung der Periode = 'stale' (keine Ausführung)
@@ -101,6 +106,8 @@
   [OK ] Tagesjob: beendet -> gesperrt (Sperr-Nachlauf 0 Tage)
   [OK ] Tagesjob idempotent (zweiter Lauf ändert nichts)
   [OK ] gesperrte Periode nicht in normaler Liste
+  [OK ] gesperrte Periode auch nicht in der Detailansicht (nur mit Zweck über Liste/Export)
+  [OK ] gesperrte Periode mit Zweckangabe für berechtigte Rolle sichtbar
   [OK ] gesperrte Daten nur mit Zweckangabe
   [OK ] Fristablauf -> Anonymisierungs-ANTRAG (nicht Ausführung)
   [OK ] kein doppelter Anonymisierungsantrag
@@ -138,7 +145,7 @@
   [OK ] Audit-Hash-Kette von Mandant A vollständig verifiziert (kein Bruch, kein Fork)
   [OK ] M05-Audit-Payloads ohne Klartext-Namen/Nummern
 ----------------------------------------------------------------------
-M05-Gegenproben: 115/115 erfüllt
+M05-Gegenproben: 122/122 erfüllt
   [OK]  M05-Gegenproben (scripts/m05_db_asserts.py)
 ----
 Alle Sicherheits-Gegenproben grün.
