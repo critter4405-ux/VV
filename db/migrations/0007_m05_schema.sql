@@ -249,8 +249,12 @@ CREATE TABLE IF NOT EXISTS m05_settings (
     lock_after_days     integer NOT NULL DEFAULT 0  CHECK (lock_after_days BETWEEN 0 AND 365),
     retention_years     integer NOT NULL DEFAULT 7  CHECK (retention_years BETWEEN 7 AND 30),
     aging_up_lead_days  integer NOT NULL DEFAULT 30 CHECK (aging_up_lead_days BETWEEN 0 AND 180),
+    hold_extension_months integer NOT NULL DEFAULT 12 CHECK (hold_extension_months BETWEEN 1 AND 60),
     updated_at          timestamptz NOT NULL DEFAULT now()
 );
+-- Reparaturrunde 1 (G-3): Legal-Hold-Verlängerung bei abgelehnter Anonymisierung (idempotent nachrüsten)
+ALTER TABLE m05_settings ADD COLUMN IF NOT EXISTS hold_extension_months integer NOT NULL DEFAULT 12
+    CHECK (hold_extension_months BETWEEN 1 AND 60);
 ALTER TABLE m05_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE m05_settings FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS m05_settings_tenant_isolation ON m05_settings;

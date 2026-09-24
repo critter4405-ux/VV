@@ -25,6 +25,10 @@
     {
       "name": "approval",
       "tenant_scoped": true
+    },
+    {
+      "name": "approval_effect_permission",
+      "tenant_scoped": false
     }
   ],
   "gates": [

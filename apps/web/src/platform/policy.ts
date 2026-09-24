@@ -34,6 +34,7 @@ export interface PolicyDecision {
 }
 
 const BINDING: Action[] = ["approve"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Nur bekannte Ressourcen sind überhaupt prüfbar (Tippfehler => deny, nicht „zufällig erlaubt").
 export const KNOWN_RESOURCES: ReadonlySet<string> = new Set([
@@ -54,18 +55,34 @@ export async function checkPolicy(req: PolicyRequest, deps: PolicyDeps = { pool:
     return { allowed: false, reason: `deny-by-default: unbekannte Ressource '${req.resource}'`, requiresApproval };
   }
   const dataClass: DataClass = req.dataClass ?? "Oe";
+  // M05-Reparaturrunde 1 (R7/H-05): scopeNode hat Bedeutung (vorher nur „nicht leer").
+  //   "verein" -> Recht an der Vereins-WURZEL nötig (Aktion liest/wirkt vereinsweit)
+  //   <uuid>   -> Recht an diesem Scope-Knoten (bzw. einem Vorfahren) nötig
+  //   "any"    -> Recht irgendwo genügt — NUR für Aktionen, deren DB-Funktion je Objekt mit den
+  //               Scopes der Zielperson erneut prüft (alle M05-Fachfunktionen)
+  //   sonst    -> deny
+  let sql: string;
+  let params: unknown[];
+  if (req.scopeNode === "any") {
+    sql = "SELECT vv_policy_any($1, $2, $3) AS allowed"; params = [req.resource, req.action, dataClass];
+  } else if (req.scopeNode === "verein") {
+    sql = "SELECT vv_authorize($1, $2, $3, NULL, NULL) AS allowed"; params = [req.resource, req.action, dataClass];
+  } else if (UUID.test(req.scopeNode)) {
+    sql = "SELECT vv_authorize($1, $2, $3, ARRAY[$4::uuid], NULL) AS allowed";
+    params = [req.resource, req.action, dataClass, req.scopeNode];
+  } else {
+    return { allowed: false, reason: `deny-by-default: unbekannter Scope '${req.scopeNode}'`, requiresApproval };
+  }
   try {
     const client = await deps.pool.connect();
     try {
       const allowed = await withTenant(client, req.tenantId, async () => {
-        const { rows } = await client.query(
-          "SELECT vv_policy_any($1, $2, $3) AS allowed", [req.resource, req.action, dataClass]);
+        const { rows } = await client.query(sql, params);
         const ok = rows[0]?.allowed === true;
         if (!ok) {
           // Auch Verweigerungen werden protokolliert (ADR-04: jede Entscheidung ins Audit).
           await writeAudit(client, {
-            tenantId: req.tenantId, actor: req.actor, action: "policy.deny",
-            subjectRef: `${req.resource}.${req.action}`, payload: { dataClass },
+            action: "policy.deny", subjectRef: `${req.resource}.${req.action}`, payload: { dataClass, scope: req.scopeNode },
           });
         }
         return ok;

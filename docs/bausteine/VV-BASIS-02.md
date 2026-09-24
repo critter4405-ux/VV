@@ -78,4 +78,5 @@ Jede Person sieht und tut nur, was ihre Funktion im Verein verlangt — der Trai
 ## 9. Änderungshistorie
 
 - 16.09.2026 — Skeleton angelegt (Stage 0 Startpaket-Harvest).
+- 24.09.2026 — v0.3: Reparaturrunde 1 (P52): zentraler Prüfpunkt wertet `scopeNode` aus (`verein` = Wurzelrecht, `<uuid>` = Knoten, `any` nur bei DB-Objektprüfung, sonst deny; R7); Freigeber-Recht × Scope jetzt auch DB-seitig in `vv_decide_approval` (R4). Details: [VV-M05 §6a](VV-M05.md).
 - 24.09.2026 — v0.2: Kern mit M05 gebaut (P50-8): datengetriebene Prüfung App + DB, Scope-Baum, Seed-Rechteprofile, SoD-Kern-Trigger, Principal-Bindung. Review + Freigabe ausstehend.

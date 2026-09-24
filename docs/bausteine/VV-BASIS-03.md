@@ -49,3 +49,4 @@ Jede Aktion ist manipulationssicher belegt — Grundlage für Vertrauen und Prü
 ## 9. Änderungshistorie
 
 - 16.09.2026 — Skeleton angelegt (Stage 0 Startpaket-Harvest).
+- 24.09.2026 — **Sicherheits-Retrofit im M05-Bau** (Register P52, Bezug P48/P49; durch die M05-Freigabe gedeckt), Migration [0011](../../db/migrations/0011_security_retrofit.sql): Audit nur noch über `vv_audit_log` (Actor aus Kontext, kein Direkt-DML für App/Worker, R1) · Freigabe verlangt Fremdmodell-Attestation bei KI-Vorschlägen (R3) und Freigeber-Recht × Scope je Effekt über `approval_effect_permission`, unbekannte Effekte deny (R4) · Executor nur mit fest registrierten Handlern (R2) · Outbox-Claim nur für konsumierte Topics (R5) mit Lease-Fencing-Token (R8). Gegenproben in [ci_db_asserts.sh](../../scripts/ci_db_asserts.sh). Details: [VV-M05 §6a](VV-M05.md).

@@ -8,7 +8,7 @@ function fakePool(allowed: boolean | "throw") {
   const client = {
     async query(sql: string, params?: unknown[]) {
       log.push(sql.trim().split(/\s+/).slice(0, 3).join(" ") + (params ? ` ${JSON.stringify(params)}` : ""));
-      if (sql.includes("vv_policy_any")) {
+      if (sql.includes("vv_policy_any") || sql.includes("vv_authorize")) {
         if (allowed === "throw") throw new Error("db down");
         return { rows: [{ allowed }] };
       }
@@ -37,7 +37,7 @@ test("Systemakteur und unbekannte Ressource: deny", async () => {
   assert.equal((await checkPolicy({ ...base, resource: "membershipp" }, { pool: f.pool })).allowed, false);
 });
 
-test("DB entscheidet: erlaubt -> allowed, in Transaktion mit Tenant + Actor", async () => {
+test("DB entscheidet: erlaubt -> allowed, in Transaktion mit Tenant + Actor (Scope any)", async () => {
   const f = fakePool(true);
   const d = await checkPolicy(base, { pool: f.pool });
   assert.equal(d.allowed, true);
@@ -52,7 +52,8 @@ test("DB verweigert -> deny + Audit-Eintrag", async () => {
   const f = fakePool(false);
   const d = await checkPolicy(base, { pool: f.pool });
   assert.equal(d.allowed, false);
-  assert.ok(f.log.some((l) => l.startsWith("INSERT INTO audit_log")));
+  assert.ok(f.log.some((l) => l.startsWith("SELECT vv_audit_log")), "Deny wird über vv_audit_log protokolliert (R1)");
+  assert.ok(!f.log.some((l) => l.includes("INSERT INTO audit_log")), "kein direkter Audit-INSERT mehr (R1)");
 });
 
 test("DB-Fehler -> fail-closed", async () => {
@@ -65,4 +66,22 @@ test("DB-Fehler -> fail-closed", async () => {
 test("approve ist bindend (requiresApproval)", async () => {
   const f = fakePool(true);
   assert.equal((await checkPolicy({ ...base, action: "approve" }, { pool: f.pool })).requiresApproval, true);
+});
+
+test("R7) scopeNode hat Bedeutung: verein = Wurzelrecht, uuid = Knoten, any = irgendwo, sonst deny", async () => {
+  const f = fakePool(true);
+  await checkPolicy({ ...base, scopeNode: "verein" }, { pool: f.pool });
+  assert.ok(f.log.some((l) => l.startsWith("SELECT vv_authorize") && l.endsWith('["membership","read","S"]')),
+    "verein -> vv_authorize an der Wurzel (keine Ziel-Scopes)");
+  const g = fakePool(true);
+  const node = "5c000000-0000-0000-0000-0000000000a2";
+  await checkPolicy({ ...base, scopeNode: node }, { pool: g.pool });
+  assert.ok(g.log.some((l) => l.startsWith("SELECT vv_authorize") && l.includes(node)));
+  const h = fakePool(true);
+  await checkPolicy({ ...base, scopeNode: "any" }, { pool: h.pool });
+  assert.ok(h.log.some((l) => l.startsWith("SELECT vv_policy_any")));
+  const k = fakePool(true);
+  const d = await checkPolicy({ ...base, scopeNode: "mannschaft-x" }, { pool: k.pool });
+  assert.equal(d.allowed, false);
+  assert.equal(k.log.length, 0, "unbekannter Scope: deny ohne DB-Zugriff");
 });

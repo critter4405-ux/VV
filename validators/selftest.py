@@ -104,6 +104,24 @@ from validators.checks.k29_dossier import _mermaid_problem
 expect("K29: unbalanciertes Mermaid wird ROT", _mermaid_problem("```mermaid\nflowchart TB\n A[x --> B\n```") is not None)
 expect("K29: leeres classDiagram wird ROT", _mermaid_problem("```mermaid\nclassDiagram\n```") is not None)
 
+# R6/H-14 (M05-Reparaturrunde 1): CI + CodeQL müssen auf dem REALEN Hauptbranch auslösen.
+# Realer Hauptbranch = `master` (git); zusätzlich `main` als Migrationsziel. Ohne YAML-Abhängigkeit:
+# den push.branches-Block zeilengenau lesen.
+import re as _re, subprocess as _sp
+def _push_branches(path: str) -> list[str]:
+    txt = open(path, encoding="utf-8").read()
+    m = _re.search(r"^on:\s*\n(?:[ \t]+.*\n|\s*\n)*?[ \t]+push:\s*\n(?:[ \t]+#.*\n)*[ \t]+branches:\s*\[([^\]]*)\]", txt, _re.M)
+    return [b.strip().strip('"\'') for b in m.group(1).split(",")] if m else []
+_mains = {"master", "main"}
+try:
+    _head = _sp.run(["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], capture_output=True, text=True).stdout.strip()
+    if _head: _mains.add(_head.split("/", 1)[-1])
+except OSError:
+    pass
+for _wf in (".github/workflows/ci.yml", ".github/workflows/codeql.yml"):
+    _b = _push_branches(_wf)
+    expect(f"R6: {_wf} push-Trigger deckt realen Hauptbranch ({', '.join(sorted(_mains))})", _mains.issubset(set(_b)))
+
 fails = [n for n, ok in R if not ok]
 print("-" * 60)
 print(f"Validator-Selbsttest: {sum(1 for _,ok in R if ok)}/{len(R)} Erwartungen erfüllt"

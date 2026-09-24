@@ -182,6 +182,8 @@ export function parseSettings(b: unknown) {
     lockAfterDays: int(o.lockAfterDays, "lockAfterDays", 0, 365),
     retentionYears: int(o.retentionYears, "retentionYears", 7, 30),
     agingUpLeadDays: int(o.agingUpLeadDays, "agingUpLeadDays", 0, 180),
+    holdExtensionMonths: o.holdExtensionMonths === undefined || o.holdExtensionMonths === null
+      ? null : int(o.holdExtensionMonths, "holdExtensionMonths", 1, 60),
   };
 }
 

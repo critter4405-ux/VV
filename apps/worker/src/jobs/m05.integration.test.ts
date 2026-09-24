@@ -14,7 +14,7 @@ test("Freigabe wird über Outbox + Worker genau einmal ausgeführt",
   const { Pool } = await import("pg");
   const app = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
   const { pool: wk, claimOutbox, markOutboxDone } = await import("../db.ts");
-  const { handleM05Outbox } = await import("./m05.ts");
+  const { handleM05Outbox, M05_TOPICS } = await import("./m05.ts");
   const run = async (actor: string, sql: string, p: unknown[] = []) => {
     const c = await app.connect();
     try {
@@ -40,13 +40,20 @@ test("Freigabe wird über Outbox + Worker genau einmal ausgeführt",
     // Worker-Schleife wie in index.ts: claim -> handle -> done
     let handled = 0;
     for (let i = 0; i < 20 && handled === 0; i++) {
-      for (const row of await claimOutbox(50)) {
+      for (const row of await claimOutbox(50, M05_TOPICS)) {
+        assert.ok((M05_TOPICS as readonly string[]).includes(row.topic), "nur Consumer-Topics werden geclaimt (R5)");
         const ours = row.topic === "m05.execute" && (row.payload as any)?.approval_id === appr;
-        if (ours && await handleM05Outbox(row, wk)) handled++;
-        if (ours) await markOutboxDone(row.id);
+        if (ours && await handleM05Outbox(row, wk)) {
+          handled++;
+          assert.equal(await markOutboxDone(row.id, row.lease_token), true, "Quittung mit gültigem Lease");
+        }
       }
     }
     assert.equal(handled, 1, "Ausführungs-Event genau einmal verarbeitet");
+    // R5: Ereignis OHNE Consumer (hier m05.membership.ended aus derselben Ausführung) bleibt geparkt
+    const parked = await run("sub-schrift-aa", "SELECT count(*)::int AS n FROM outbox WHERE topic='m05.membership.ended' "
+      + "AND payload->>'period_id'=$1 AND processed_at IS NULL AND attempts=0", [per]);
+    assert.equal(parked[0].n, 1, "Event ohne Consumer bleibt unberührt geparkt (nicht quittiert, nicht DLQ)");
     const [{ m }] = await run("sub-schrift-aa", "SELECT m05_get_member((SELECT id FROM (SELECT member_id AS id FROM m05_list_members() WHERE period_id=$1) x)) AS m", [per]);
     assert.equal(m.periods[0].status, "beendet", "Frist 0/sofort -> heute beendet");
     // Replay: erneut ausgelöst -> No-Op

@@ -1,6 +1,6 @@
 # M05 — Sicherheits-/Fach-Gegenproben gegen echte PostgreSQL
-# Lauf: 2026-09-24 15:25 CEST · PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
-# Frische DB: Migrationen 0001–0010 + Seeds (nur synthetisch), dann scripts/ci_db_asserts.sh
+# Lauf: 2026-09-24 22:12 CEST · PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+# Frische DB: Migrationen 0001–0011 + Seeds (nur synthetisch), dann scripts/ci_db_asserts.sh
 
 == Sicherheits-Gegenproben ==
   [OK]  RLS: ohne Kontext 0, Mandanten isoliert (0/15/2)
@@ -11,18 +11,33 @@
   [OK]  H1: vv_app UPDATE approval.approved_by denied
   [OK]  H1: vv_app EXECUTE vv_consume_approval denied
   [OK]  H1: Selbst-Freigabe (actor=requester) abgewiesen (SoD)
-  [OK]  H1: Freigeber = app.actor (DB-seitig)
+  [OK]  R4: Actor ohne Freigeber-Recht (Trainer) abgewiesen
+  [OK]  R4: unbekannter Actor (kein Principal) abgewiesen
+  [OK]  R3: Modell-Vorschlag ohne Reviewer-Attestation nicht freigebbar
+  [OK]  R3: Reviewer aus gleicher Modellfamilie abgewiesen
+  [OK]  R3: CHECK verhindert 'approved' ohne Attestation (auch als Eigentümer)
+  [OK]  H1/R3/R4: Freigeber = app.actor, Fremdfamilie attestiert (approved/sub-vorstand-aa/gpt-5.3-codex)
   [OK]  H1: Consume einmal, Replay ROT (t/f)
+  [OK]  R4: Effekt ohne Freigeber-Zuordnung -> deny-by-default
+  [OK]  R1: vv_app INSERT audit_log denied
+  [OK]  R1: OVERRIDING SYSTEM VALUE denied
+  [OK]  R1: vv_app INSERT audit_anchor denied
+  [OK]  R1: vv_app kann Actor nicht vorgeben (vv_audit_write denied)
+  [OK]  R1: reservierte Fach-Aktion über vv_audit_log abgewiesen
+  [OK]  R1: vv_audit_log schreibt Actor aus app.actor (sub-schrift-aa)
   [OK]  S0-1: vv_app kann keine bereits genehmigte Freigabe einfügen (pending/-)
   [OK]  S0-2: requested_by ≠ app.actor abgewiesen
   [OK]  Audit: TRUNCATE für Eigentümer blockiert
   [OK]  H2/H3: Hard-Crash-Giftelement in DLQ (5/true)
   [OK]  H3: in-flight 5. Versuch NICHT fälschlich getötet
-  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (47ms)
+  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (74ms)
   [OK]  Reaper: nach Lock-Freigabe tote Zeile korrekt in DLQ
   [OK]  Kein Doppelzustand: Spät-Erfolg räumt dead_at ab (tot=true -> clean/done=true/true)
-== M05/BASIS-02 DB-Gegenproben (Lauf 58a0ed) ==
-  [OK ] Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)
+  [OK]  R8: Fencing — alter Lease quittiert/verlängert/scheitert nicht, neuer Lease quittiert (f/f/f/t)
+  [OK]  R5: Event ohne Consumer bleibt unberührt geparkt (0/true/true)
+  [OK]  R5: Claim ohne Topic-Liste claimt nichts (deny-by-default)
+== M05/BASIS-02 DB-Gegenproben (Lauf e6bcc3) ==
+  [OK ] Migrationen 0006–0011 idempotent (erneuter Lauf fehlerfrei)
   [OK ] vv_definer NOSUPERUSER + NOBYPASSRLS (RLS gilt in Definer-Funktionen)
   [OK ] vv_app hat keinen Direktzugriff auf member
   [OK ] vv_app hat keinen Direktzugriff auf membership_period
@@ -135,6 +150,7 @@
   [OK ] Trainer darf keinen Import beantragen
   [OK ] Import ohne Freigabe verweigert
   [OK ] Import-Selbstfreigabe/ohne Recht abgewiesen
+  [OK ] G-1: freigegebener Import erzeugt Ereignis m05.import.approved für den Worker
   [OK ] Import mit anderen als den freigegebenen Zeilen verweigert (Hash)
   [OK ] Import: 2 neu, Konflikte gemeldet statt übernommen
   [OK ] Import-Report ohne Klartext-Personenbezug
@@ -142,10 +158,20 @@
   [OK ] Import: Antragsteller kann nicht selbst freigeben
   [OK ] neuer Batch mit gleichen Zeilen: idempotent (alles unverändert)
   [OK ] importierte ausgetretene Mitgliedschaft wird gesperrt (Art. 18)
+  [OK ] G-2: m05_import_apply ohne EXCEPTION-Block (kein Savepoint je Zeile)
+  [OK ] G-2: 3.005-Zeilen-Batch in einer Transaktion ohne Savepoints (3.000 neu, ungültige Zeilen gemeldet)
+  [OK ] G-2: Laufzeit 3.005 Zeilen < 60 s (2.7 s)
+  [OK ] G-3: Ablehnung verlängert Aufbewahrung um 12 Monate (Legal Hold), kein neuer Antrag am Folgetag
+  [OK ] G-3: Legal Hold protokolliert
+  [OK ] G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag
+  [OK ] R4: Kassier (ohne Freigaberecht) kann M05-Antrag auch direkt über vv_decide_approval nicht freigeben
+  [OK ] R4: auch Ablehnen verlangt das Freigaberecht
+  [OK ] R7: Team-Trainer hat Recht 'irgendwo', aber NICHT an der Vereinswurzel
+  [OK ] R7: Obmann hat Wurzelrecht
   [OK ] Audit-Hash-Kette von Mandant A vollständig verifiziert (kein Bruch, kein Fork)
   [OK ] M05-Audit-Payloads ohne Klartext-Namen/Nummern
 ----------------------------------------------------------------------
-M05-Gegenproben: 122/122 erfüllt
+M05-Gegenproben: 133/133 erfüllt
   [OK]  M05-Gegenproben (scripts/m05_db_asserts.py)
 ----
 Alle Sicherheits-Gegenproben grün.

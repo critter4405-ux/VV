@@ -74,6 +74,7 @@ BEGIN
   SELECT * INTO s FROM m05_settings WHERE tenant_id = vv_current_tenant();
   IF NOT FOUND THEN
     s.tenant_id := vv_current_tenant(); s.lock_after_days := 0; s.retention_years := 7; s.aging_up_lead_days := 30;
+    s.hold_extension_months := 12;
   END IF;
   RETURN s;
 END $$;
@@ -171,17 +172,23 @@ BEGIN
   RETURN v_ver + 1;
 END $$;
 
-CREATE OR REPLACE FUNCTION m05_settings_update(p_lock_after_days integer, p_retention_years integer, p_aging_up_lead_days integer)
+-- Alte 3-Parameter-Signatur (vor Reparaturrunde 1) entfernen, damit genau EIN Einstieg existiert.
+DROP FUNCTION IF EXISTS m05_settings_update(integer, integer, integer);
+CREATE OR REPLACE FUNCTION m05_settings_update(p_lock_after_days integer, p_retention_years integer,
+                                               p_aging_up_lead_days integer, p_hold_extension_months integer DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_hold integer;
 BEGIN
   IF NOT vv_authorize('membership_type', 'update', 'Oe') THEN PERFORM m05_deny('m05_settings.update'); END IF;
-  INSERT INTO m05_settings (tenant_id, lock_after_days, retention_years, aging_up_lead_days)
-  VALUES (vv_current_tenant(), p_lock_after_days, p_retention_years, p_aging_up_lead_days)
+  v_hold := coalesce(p_hold_extension_months, (m05_settings_get()).hold_extension_months, 12);
+  INSERT INTO m05_settings (tenant_id, lock_after_days, retention_years, aging_up_lead_days, hold_extension_months)
+  VALUES (vv_current_tenant(), p_lock_after_days, p_retention_years, p_aging_up_lead_days, v_hold)
   ON CONFLICT (tenant_id) DO UPDATE SET lock_after_days = EXCLUDED.lock_after_days,
-    retention_years = EXCLUDED.retention_years, aging_up_lead_days = EXCLUDED.aging_up_lead_days, updated_at = now();
+    retention_years = EXCLUDED.retention_years, aging_up_lead_days = EXCLUDED.aging_up_lead_days,
+    hold_extension_months = EXCLUDED.hold_extension_months, updated_at = now();
   PERFORM vv_audit_write('m05.settings.update', vv_current_tenant()::text,
     jsonb_build_object('lock_after_days', p_lock_after_days, 'retention_years', p_retention_years,
-                       'aging_up_lead_days', p_aging_up_lead_days));
+                       'aging_up_lead_days', p_aging_up_lead_days, 'hold_extension_months', v_hold));
 END $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -436,6 +443,23 @@ BEGIN
   PERFORM vv_audit_write('m05.approval.list', NULL, '{}'::jsonb);
 END $$;
 
+-- Reparaturrunde 1 (Gemini G-3): abgelehnte Anonymisierung = Aufbewahrung verlängert (Legal Hold),
+-- statt täglich neuer Antrag. Verlängerung ab Entscheidungsdatum um hold_extension_months, protokolliert.
+CREATE OR REPLACE FUNCTION m05_apply_hold(p_period uuid, p_approval uuid, p_decided date)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE s m05_settings := m05_settings_get(); v_until date;
+BEGIN
+  v_until := (greatest(coalesce(p_decided, m05_today()), m05_today()) + make_interval(months => s.hold_extension_months))::date;
+  PERFORM m05_ctx('job', 'system:m05-hold', m05_today(), p_approval);
+  UPDATE membership_period SET retention_until = greatest(retention_until, v_until)
+   WHERE tenant_id = vv_current_tenant() AND id = p_period AND status = 'gesperrt';
+  UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected'
+   WHERE approval_id = p_approval AND closed_at IS NULL;
+  PERFORM vv_audit_write('m05.retention.hold', p_period::text,
+    jsonb_build_object('approval_id', p_approval, 'retention_until', v_until, 'months', s.hold_extension_months),
+    coalesce(vv_actor(), 'system:m05-hold'));
+END $$;
+
 -- Entscheidung (Vorstand/Obmann). Freigeber = app.actor (vv_decide_approval), nie der Antragsteller.
 CREATE OR REPLACE FUNCTION m05_decide(p_approval uuid, p_decision text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
@@ -450,6 +474,8 @@ BEGIN
   PERFORM vv_decide_approval(p_approval, p_decision, NULL);     -- SoD + Freigeber aus app.actor (DB)
   IF p_decision = 'approved' THEN
     PERFORM vv_outbox_emit('m05.execute', jsonb_build_object('approval_id', p_approval), 'm05.execute:' || p_approval);
+  ELSIF x.effect_id = 'm05.membership.anonymize' THEN
+    PERFORM m05_apply_hold(x.period_id, p_approval, m05_today());       -- G-3: Legal Hold
   ELSE
     UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected' WHERE approval_id = p_approval;
   END IF;
@@ -478,7 +504,11 @@ BEGIN
     RAISE EXCEPTION 'M05: Freigabe passt nicht zum gebundenen Antrag (Manipulation) — verweigert';
   END IF;
   IF a.status = 'rejected' THEN
-    UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected' WHERE approval_id = p_approval;
+    IF x.effect_id = 'm05.membership.anonymize' THEN
+      PERFORM m05_apply_hold(x.period_id, p_approval, a.decided_at::date);
+    ELSE
+      UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected' WHERE approval_id = p_approval;
+    END IF;
     RETURN jsonb_build_object('ok', false, 'outcome', 'rejected');
   END IF;
   IF a.status <> 'approved' THEN RAISE EXCEPTION 'M05: Freigabe % noch nicht erteilt', p_approval; END IF;
@@ -586,7 +616,7 @@ END $$;
 CREATE OR REPLACE FUNCTION m05_job_daily()
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE s m05_settings := m05_settings_get(); r record; v_app uuid;
-        n_end int := 0; n_lock int := 0; n_prop int := 0; n_ret int := 0; n_miss int := 0;
+        n_end int := 0; n_lock int := 0; n_prop int := 0; n_ret int := 0; n_miss int := 0; n_hold int := 0;
         v_type membership_type_assignment; v_rule membership_type_version; v_birth date; v_due date; v_new uuid;
 BEGIN
   IF vv_current_tenant() IS NULL THEN RAISE EXCEPTION 'm05_job_daily: kein Mandantenkontext'; END IF;
@@ -642,6 +672,13 @@ BEGIN
       n_prop := n_prop + 1;
     END IF;
   END LOOP;
+  -- (4a) G-3: direkt (z. B. über vv_decide_approval) abgelehnte Anonymisierungsanträge -> Legal Hold
+  FOR r IN SELECT q.period_id, q.approval_id, a.decided_at FROM m05_approval_request q JOIN approval a ON a.id = q.approval_id
+            WHERE q.tenant_id = vv_current_tenant() AND q.effect_id = 'm05.membership.anonymize'
+              AND q.closed_at IS NULL AND a.status = 'rejected' LOOP
+    PERFORM m05_apply_hold(r.period_id, r.approval_id, r.decided_at::date);
+    n_hold := n_hold + 1;
+  END LOOP;
   -- (4) Aufbewahrung abgelaufen -> Anonymisierungs-ANTRAG (Ausführung nur mit Vier-Augen)
   FOR r IN SELECT * FROM membership_period p WHERE p.tenant_id = vv_current_tenant() AND p.status = 'gesperrt'
               AND p.retention_until <= m05_today()
@@ -654,7 +691,7 @@ BEGIN
     n_ret := n_ret + 1;
   END LOOP;
   RETURN jsonb_build_object('ended', n_end, 'locked', n_lock, 'aging_up_proposed', n_prop,
-                            'aging_up_data_missing', n_miss, 'anonymize_requested', n_ret);
+                            'aging_up_data_missing', n_miss, 'anonymize_requested', n_ret, 'retention_hold', n_hold);
 END $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -686,6 +723,12 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'M05: kein offener Import-Batch %', p_batch_ref; END IF;
   IF NOT vv_authorize('membership', 'approve', 'S') THEN PERFORM m05_deny('membership.approve (import)'); END IF;
   PERFORM vv_decide_approval(b.approval_id, p_decision, NULL);
+  -- Reparaturrunde 1 (Gemini G-1): freigegebener Import bleibt nicht still liegen — Ereignis für den
+  -- Worker-Consumer (wendet an, sobald die Q05-Engine die freigegebenen Zeilen liefert; sonst sichtbar DLQ).
+  IF p_decision = 'approved' THEN
+    PERFORM vv_outbox_emit('m05.import.approved', jsonb_build_object('batch_ref', p_batch_ref, 'approval_id', b.approval_id),
+                           'm05.import.approved:' || p_batch_ref);
+  END IF;
   PERFORM vv_audit_write('m05.import.decide', p_batch_ref, jsonb_build_object('decision', p_decision));
   RETURN jsonb_build_object('ok', true);
 END $$;
@@ -696,7 +739,7 @@ DECLARE b m05_import_batch; a approval; s m05_settings := m05_settings_get(); v_
         v_row jsonb; i int := 0; n_new int := 0; n_same int := 0; n_nogrund int := 0;
         conflicts jsonb := '[]'::jsonb; v_member member; v_period membership_period; v_type uuid;
         v_status text; v_entry date; v_exit date; v_kind text; v_reason text; v_pid uuid; v_rule membership_type_version;
-        v_cur_type uuid; v_new_period uuid;
+        v_cur_type uuid; v_new_period uuid; v_err text; v_applied date;
 BEGIN
   SELECT * INTO b FROM m05_import_batch WHERE tenant_id = vv_current_tenant() AND batch_ref = p_batch_ref FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'M05-Import: Batch % unbekannt (nur über m05_import_request)', p_batch_ref; END IF;
@@ -718,43 +761,70 @@ BEGIN
     RAISE EXCEPTION 'M05-Import: keine gültige, fremd-genehmigte Batch-Freigabe — verweigert';
   END IF;
 
+  -- Reparaturrunde 1 (Gemini G-2): KEIN EXCEPTION-Block je Zeile mehr (1 Savepoint/Subtransaktion je
+  -- Zeile belastete pg_subtrans bei bis zu 20.000 Zeilen). Fachliche Fehler werden per IF VOR dem
+  -- Schreiben erkannt und als Konflikt gemeldet; ein UNERWARTETER DB-Fehler bricht den ganzen Batch
+  -- ab (Rollback inkl. Freigabe-Consume -> nichts halb importiert, Freigabe bleibt unverbraucht).
   FOR v_row IN SELECT value FROM jsonb_array_elements(p_rows) LOOP
     i := i + 1;
-    BEGIN
+    v_err := NULL;
+    IF jsonb_typeof(v_row) <> 'object' THEN
+      v_err := 'zeile_kein_objekt';
+    ELSIF v_row->>'member_no' IS NULL OR (v_row->>'member_no') !~ '^[A-Za-z0-9._-]{1,32}$' THEN
+      v_err := 'mitgliedsnummer_fehlt_oder_ungueltig';
+    ELSIF NOT coalesce(pg_input_is_valid(v_row->>'person_id', 'uuid'), false) THEN
+      v_err := 'person_id_ungueltig';
+    ELSIF NOT coalesce(pg_input_is_valid(v_row->>'entry_date', 'date'), false) THEN
+      v_err := 'eintrittsdatum_ungueltig';
+    ELSIF nullif(v_row->>'exit_effective_date', '') IS NOT NULL
+          AND NOT pg_input_is_valid(v_row->>'exit_effective_date', 'date') THEN
+      v_err := 'austrittsdatum_ungueltig';
+    ELSIF nullif(v_row->>'applied_on', '') IS NOT NULL AND NOT pg_input_is_valid(v_row->>'applied_on', 'date') THEN
+      v_err := 'antragsdatum_ungueltig';
+    ELSIF coalesce(v_row->>'status', '') NOT IN ('aktiv','ruhend','beendet') THEN
+      v_err := 'pflichtfeld';
+    END IF;
+    IF v_err IS NULL THEN
       v_status := v_row->>'status';
       v_entry  := (v_row->>'entry_date')::date;
       v_exit   := nullif(v_row->>'exit_effective_date', '')::date;
       v_kind   := nullif(v_row->>'end_kind', '');
       v_reason := nullif(v_row->>'end_reason_code', '');
       v_pid    := (v_row->>'person_id')::uuid;
-      IF v_row->>'member_no' IS NULL OR v_entry IS NULL OR v_pid IS NULL
-         OR v_status NOT IN ('aktiv','ruhend','beendet') THEN
-        RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'pflichtfeld';
+      v_applied := coalesce(nullif(v_row->>'applied_on', '')::date, v_entry);
+      IF v_status = 'beendet' AND (v_exit IS NULL OR v_kind IS NULL OR v_kind NOT IN ('ausgetreten','verstorben')) THEN
+        v_err := 'beendigung_unvollstaendig_oder_ausschluss';
+      ELSIF v_status <> 'beendet' AND (v_exit IS NOT NULL OR v_kind IS NOT NULL) THEN
+        v_err := 'austritt_bei_offener_mitgliedschaft';
+      ELSIF v_exit IS NOT NULL AND v_exit < v_entry THEN
+        v_err := 'austritt_vor_eintritt';
+      ELSIF v_applied > v_entry THEN
+        v_err := 'antrag_nach_eintritt';
+      ELSIF v_reason IS NOT NULL AND (v_kind IS DISTINCT FROM 'ausgetreten' OR NOT EXISTS (
+              SELECT 1 FROM membership_end_reason WHERE code = v_reason AND kind = 'austritt')) THEN
+        v_err := 'austrittsgrund_ungueltig';
+      ELSIF NOT EXISTS (SELECT 1 FROM person WHERE tenant_id = vv_current_tenant() AND id = v_pid) THEN
+        v_err := 'person_unbekannt';
       END IF;
-      IF v_status = 'beendet' AND (v_exit IS NULL OR v_kind NOT IN ('ausgetreten','verstorben')) THEN
-        RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'beendigung_unvollstaendig_oder_ausschluss';
-      END IF;
-      IF v_status <> 'beendet' AND (v_exit IS NOT NULL OR v_kind IS NOT NULL) THEN
-        RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'austritt_bei_offener_mitgliedschaft';
-      END IF;
+    END IF;
+    IF v_err IS NULL THEN
       SELECT id INTO v_type FROM membership_type WHERE tenant_id = vv_current_tenant() AND code = v_row->>'type_code';
-      IF v_type IS NULL THEN RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'unbekannte_mitgliedsart'; END IF;
-
+      IF v_type IS NULL THEN v_err := 'unbekannte_mitgliedsart'; END IF;
+    END IF;
+    IF v_err IS NULL THEN
+      v_member := NULL;
       SELECT * INTO v_member FROM member WHERE tenant_id = vv_current_tenant() AND member_no = v_row->>'member_no' FOR UPDATE;
-      IF FOUND AND v_member.person_id IS DISTINCT FROM v_pid THEN
-        RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'mitgliedsnummer_andere_person';
+      IF v_member.id IS NOT NULL AND v_member.person_id IS DISTINCT FROM v_pid THEN
+        v_err := 'mitgliedsnummer_andere_person';
+      ELSIF v_member.id IS NULL AND EXISTS (SELECT 1 FROM member WHERE tenant_id = vv_current_tenant() AND person_id = v_pid) THEN
+        v_err := 'person_andere_mitgliedsnummer';
       END IF;
-      IF NOT FOUND THEN
-        IF EXISTS (SELECT 1 FROM member WHERE tenant_id = vv_current_tenant() AND person_id = v_pid) THEN
-          RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'person_andere_mitgliedsnummer';
-        END IF;
-        INSERT INTO member (tenant_id, person_id, member_no) VALUES (vv_current_tenant(), v_pid, v_row->>'member_no')
-        RETURNING * INTO v_member;
-      END IF;
-
+    END IF;
+    IF v_err IS NULL AND v_member.id IS NOT NULL THEN
+      v_period := NULL;
       SELECT * INTO v_period FROM membership_period WHERE tenant_id = vv_current_tenant()
          AND member_id = v_member.id AND entry_date = v_entry;
-      IF FOUND THEN
+      IF v_period.id IS NOT NULL THEN
         v_cur_type := (m05_current_type(v_period.id, m05_today())).type_id;
         IF v_period.status IN (v_status, CASE WHEN v_status = 'beendet' THEN 'gesperrt' END)
            AND v_period.exit_effective_date IS NOT DISTINCT FROM v_exit
@@ -763,28 +833,35 @@ BEGIN
           n_same := n_same + 1;                                 -- idempotent: unverändert
           CONTINUE;
         END IF;
-        RAISE EXCEPTION USING ERRCODE = 'VV001', MESSAGE = 'abweichender_bestand';   -- nie überschreiben
+        v_err := 'abweichender_bestand';                        -- nie überschreiben
+      ELSIF v_status <> 'beendet' AND EXISTS (SELECT 1 FROM membership_period WHERE tenant_id = vv_current_tenant()
+              AND member_id = v_member.id AND status IN ('beantragt','aktiv','ruhend','gekuendigt')) THEN
+        v_err := 'offene_periode_vorhanden';
       END IF;
-
-      PERFORM m05_ctx('import', 'system:m05-import', v_entry, b.approval_id);
-      INSERT INTO membership_period (tenant_id, member_id, status, applied_on, entry_date, exit_effective_date,
-                                     end_kind, end_reason_code, retention_until, source, import_batch)
-      VALUES (vv_current_tenant(), v_member.id, v_status, coalesce(nullif(v_row->>'applied_on','')::date, v_entry),
-              v_entry, v_exit, v_kind, v_reason,
-              CASE WHEN v_status = 'beendet' THEN (v_exit + make_interval(years => s.retention_years))::date END,
-              'import', p_batch_ref)
-      RETURNING id INTO v_new_period;
-      v_rule := m05_type_rule(v_type, v_entry);
-      INSERT INTO membership_type_assignment (tenant_id, period_id, type_id, type_version, effective_from, actor, source)
-      VALUES (vv_current_tenant(), v_new_period, v_type, v_rule.version, v_entry, 'system:m05-import', 'import');
-      PERFORM m05_emit('m05.membership.imported', v_new_period, jsonb_build_object('status', v_status, 'batch', p_batch_ref));
-      IF v_status = 'beendet' AND v_reason IS NULL AND v_kind = 'ausgetreten' THEN n_nogrund := n_nogrund + 1; END IF;
-      n_new := n_new + 1;
-    EXCEPTION WHEN OTHERS THEN
+    END IF;
+    IF v_err IS NOT NULL THEN
       -- Konflikt/ungültige Zeile: gemeldet, NICHT übernommen (Zeilennummer + Code, kein Klartext).
-      conflicts := conflicts || jsonb_build_object('zeile', i,
-        'code', CASE WHEN SQLSTATE = 'VV001' THEN SQLERRM ELSE 'db_' || SQLSTATE END);
-    END;
+      conflicts := conflicts || jsonb_build_object('zeile', i, 'code', v_err);
+      CONTINUE;
+    END IF;
+
+    IF v_member.id IS NULL THEN
+      INSERT INTO member (tenant_id, person_id, member_no) VALUES (vv_current_tenant(), v_pid, v_row->>'member_no')
+      RETURNING * INTO v_member;
+    END IF;
+    PERFORM m05_ctx('import', 'system:m05-import', v_entry, b.approval_id);
+    INSERT INTO membership_period (tenant_id, member_id, status, applied_on, entry_date, exit_effective_date,
+                                   end_kind, end_reason_code, retention_until, source, import_batch)
+    VALUES (vv_current_tenant(), v_member.id, v_status, v_applied, v_entry, v_exit, v_kind, v_reason,
+            CASE WHEN v_status = 'beendet' THEN (v_exit + make_interval(years => s.retention_years))::date END,
+            'import', p_batch_ref)
+    RETURNING id INTO v_new_period;
+    v_rule := m05_type_rule(v_type, v_entry);
+    INSERT INTO membership_type_assignment (tenant_id, period_id, type_id, type_version, effective_from, actor, source)
+    VALUES (vv_current_tenant(), v_new_period, v_type, v_rule.version, v_entry, 'system:m05-import', 'import');
+    PERFORM m05_emit('m05.membership.imported', v_new_period, jsonb_build_object('status', v_status, 'batch', p_batch_ref));
+    IF v_status = 'beendet' AND v_reason IS NULL AND v_kind = 'ausgetreten' THEN n_nogrund := n_nogrund + 1; END IF;
+    n_new := n_new + 1;
   END LOOP;
 
   UPDATE m05_import_batch SET applied_at = now(),
@@ -953,7 +1030,7 @@ GRANT EXECUTE ON FUNCTION vv_consume_approval(text, text) TO vv_definer;
 GRANT EXECUTE ON FUNCTION
   m05_type_create(text, text, text, integer, text, integer, uuid),
   m05_type_new_version(uuid, date, integer, text, integer, uuid),
-  m05_settings_update(integer, integer, integer),
+  m05_settings_update(integer, integer, integer, integer),
   m05_apply(uuid, text, uuid, date),
   m05_admit(uuid, date, integer), m05_reject(uuid, integer),
   m05_suspend(uuid, date, integer), m05_resume(uuid, date, integer),

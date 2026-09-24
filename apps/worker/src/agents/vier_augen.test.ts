@@ -3,7 +3,7 @@
 // (a) Umetikettieren einer bindenden Senke, (b) erfundene Freigabe, (c) Token-Replay/Neustart.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertExecutable, executeBindingEffect, type ExecContext } from "./vier_augen.ts";
+import { assertExecutable, createExecutor, executeBindingEffect, type ExecContext } from "./vier_augen.ts";
 import type { ApprovalStore } from "./approval_store.ts";
 import { getEffect } from "./effects.ts";
 
@@ -30,11 +30,35 @@ class FakeStore implements ApprovalStore {
       r.status === "approved" && !r.consumed &&
       (r.expiresAt === null || r.expiresAt > now) &&
       r.approvedBy !== null && r.approvedBy !== r.requestedBy &&
-      (r.reviewerModel === null || r.reviewerModel !== r.builderModel));
+      attestationOk(r.builderModel, r.reviewerModel));
     if (!hit) throw new Error("Keine gültige Vier-Augen-Freigabe — verweigert");
     hit.consumed = true;   // atomarer Einmal-Consume
   }
 }
+
+// Spiegel von vv_model_family/vv_attestation_ok (Migration 0011, R3): Modell-Vorschläge brauchen
+// eine Fremdfamilien-Attestation; menschliche/System-Anträge nicht.
+function family(m: string | null): string | null {
+  if (!m) return null;
+  const x = m.toLowerCase();
+  if (/^(human|system):/.test(x)) return x.split(":")[0]!;
+  if (/(claude|anthropic|opus|sonnet|haiku)/.test(x)) return "anthropic";
+  if (/(gpt|openai|codex|^o[0-9])/.test(x)) return "openai";
+  if (/(gemini|google)/.test(x)) return "google";
+  return x.replace(/[^a-z].*$/, "");
+}
+function attestationOk(builder: string, reviewer: string | null): boolean {
+  const fb = family(builder);
+  if (fb === "human" || fb === "system") return true;
+  const fr = family(reviewer);
+  return !!fr && fr !== "human" && fr !== "system" && fr !== (fb ?? "");
+}
+
+// Test-Executor mit FEST registrierten Senken (wie Produktion, nur mit Test-Handlern).
+const exec = createExecutor({
+  "person.delete": async () => "DELETED",
+  "payment.execute": async () => "PAID",
+});
 
 const ctx: ExecContext = { tenantId: "t-aa", subjectRef: "person-1", requestedBy: "agent-1" };
 
@@ -47,11 +71,42 @@ test("bindender Effekt ist server-seitig klassifiziert (Registry, nicht Aufrufer
 test("ADVERSARIAL a) Umetikettieren erreicht die Zahlungs-Senke NICHT", async () => {
   const store = new FakeStore();
   // Eine echte Zahlung MUSS den payment.execute-Effekt aufrufen -> ohne Freigabe abgewiesen.
-  await assert.rejects(() => executeBindingEffect("payment.execute", ctx, store, async () => "PAID"),
-    /Freigabe/);
-  // „reminder.dispatch" ist ein anderer Effekt/Handler — er bewegt kein Geld, egal wie etikettiert.
-  const r = await executeBindingEffect("reminder.dispatch", ctx, store, async () => "REMINDED");
-  assert.equal(r, "REMINDED");
+  await assert.rejects(() => exec.execute("payment.execute", ctx, store), /Freigabe/);
+});
+
+test("ADVERSARIAL R2/B-03) kein Handler vom Aufrufer: nicht-bindende ID kann keine Senke ausführen", async () => {
+  const store = new FakeStore();
+  let paid = false;
+  const pay = async () => { paid = true; return "PAID"; };
+  // Früherer Angriff: executeBindingEffect("reminder.dispatch", ctx, store, pay) lief OHNE Freigabe.
+  // Die API nimmt keinen Handler mehr; ein zusätzliches Argument wird ignoriert.
+  await assert.rejects(() => (executeBindingEffect as any)("reminder.dispatch", ctx, store, pay), /nicht bindend/);
+  await assert.rejects(() => (exec.execute as any)("reminder.dispatch", ctx, store, pay), /nicht bindend/);
+  assert.equal(paid, false);
+  // Registry lässt sich nicht nachträglich verbiegen:
+  assert.throws(() => createExecutor({ "reminder.dispatch": pay }), /nicht als bindende Handler-Senke/);
+  assert.throws(() => createExecutor({ "m05.membership.terminate": pay }), /nicht als bindende Handler-Senke/);
+  assert.throws(() => createExecutor({ "gibt.es.nicht": pay }), /unbekannten Effekt/);
+  assert.ok(Object.isFrozen(exec));
+});
+
+test("R2) DB-atomare M05-Effekte sind über den TS-Executor unerreichbar", async () => {
+  const store = new FakeStore();
+  store.grant({ tenantId: "t-aa", effectId: "m05.membership.terminate", subjectRef: "person-1" });
+  await assert.rejects(() => exec.execute("m05.membership.terminate", ctx, store), /nur DB-atomar/);
+  // Produktions-Executor hat (noch) keine TS-Senke registriert -> fail-closed
+  store.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1" });
+  await assert.rejects(() => executeBindingEffect("person.delete", ctx, store), /Kein fest registrierter Handler/);
+});
+
+test("R3) Modell-Vorschlag ohne Fremdfamilien-Attestation wird nicht eingelöst", async () => {
+  const store = new FakeStore();
+  store.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1", reviewerModel: null });
+  await assert.rejects(() => exec.execute("person.delete", ctx, store), /Freigabe/);
+  const s2 = new FakeStore();
+  s2.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1",
+    builderModel: "claude-opus-5.5", reviewerModel: "claude-sonnet-4" });
+  await assert.rejects(() => exec.execute("person.delete", ctx, s2), /Freigabe/);
 });
 
 test("ADVERSARIAL b) erfundene Freigabe ohne echten DB-Eintrag wird abgewiesen", async () => {
@@ -72,9 +127,8 @@ test("ADVERSARIAL b2) Reviewer aus gleicher Modellfamilie zählt nicht", async (
 test("ADVERSARIAL c) Token/Freigabe ist genau EINMAL einlösbar (Replay ROT)", async () => {
   const store = new FakeStore();
   store.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1" });
-  await assert.doesNotReject(() => executeBindingEffect("person.delete", ctx, store, async () => "DELETED"));
-  await assert.rejects(() => executeBindingEffect("person.delete", ctx, store, async () => "DELETED"),
-    /Freigabe/);   // zweiter Versuch: bereits eingelöst
+  assert.equal(await exec.execute("person.delete", ctx, store), "DELETED");
+  await assert.rejects(() => exec.execute("person.delete", ctx, store), /Freigabe/);   // Replay: bereits eingelöst
 });
 
 test("abgelaufene Freigabe wird abgewiesen", async () => {

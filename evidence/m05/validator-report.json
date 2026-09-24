@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T13:26:07.870273+00:00",
+  "generated_at": "2026-09-24T20:12:55.907644+00:00",
   "stage": 0,
   "live_db": true,
   "require_live": true,
@@ -15,7 +15,7 @@
           "rule": "ADR-09",
           "ok": true,
           "skipped": false,
-          "detail": "14 Bausteine, 24 Tabellen, keine Doppelung"
+          "detail": "14 Bausteine, 25 Tabellen, keine Doppelung"
         }
       ]
     },
@@ -289,6 +289,12 @@
           "ok": true,
           "skipped": false,
           "detail": "approval: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "approval_effect_permission: deklariert in VV-BASIS-03"
         },
         {
           "rule": "ADR-09",

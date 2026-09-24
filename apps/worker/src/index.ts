@@ -5,27 +5,37 @@
 import PgBoss from "pg-boss";
 import { writeFileSync } from "node:fs";
 import { claimOutbox, markOutboxDone, markOutboxFail, pool } from "./db.ts";
-import { handleM05Outbox, runM05Daily } from "./jobs/m05.ts";
+import { handleM05Outbox, runM05Daily, M05_TOPICS } from "./jobs/m05.ts";
 
 function beat() {
   try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
 }
 
+// Topics, für die dieser Worker einen Consumer hat. Nur diese werden geclaimt (R5/H-06): Events
+// ohne Consumer (z. B. m05.membership.* für künftige BASIS-07/M06) bleiben unberührt GEPARKT und
+// gehen nicht verloren. Neue Consumer registrieren hier ihre Topics.
+const CONSUMED_TOPICS: readonly string[] = [...M05_TOPICS];
+
 async function pollOutbox() {
   try {
-    const rows = await claimOutbox(10);
+    const rows = await claimOutbox(10, CONSUMED_TOPICS);
     for (const row of rows) {
       try {
-        // M05: Ausführung eingelöster Vier-Augen-Freigaben (m05.execute). Andere Topics: protokollieren
-        // (Konsumenten wie BASIS-07/M06 folgen mit ihren Modulen).
-        if (!(await handleM05Outbox(row, pool))) {
-          console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
+        const handled = await handleM05Outbox(row, pool);
+        if (handled) {
+          // Quittieren nur mit gültigem Lease (R8): hat ein anderer Worker nach Lease-Ablauf übernommen,
+          // wird dieses Ergebnis verworfen statt dessen Zustellung zu überschreiben.
+          if (!(await markOutboxDone(row.id, row.lease_token))) {
+            console.warn(`[vv-worker] outbox ${row.id}: Lease verloren — Quittung verworfen (Fencing)`);
+          }
+        } else {
+          // Sollte wegen des Topic-Filters nie passieren — trotzdem NIE ohne Verarbeitung quittieren.
+          await markOutboxFail(row.id, row.lease_token, `kein Consumer für Topic ${row.topic}`);
         }
-        await markOutboxDone(row.id);
       } catch (jobErr) {
         // Poison-Pill-Schutz: Fehlversuch zählen, nach N in die DLQ (dead_at) statt Endlos-Reclaim.
         console.error(`[vv-worker] outbox ${row.id} Zustellfehler:`, jobErr);
-        await markOutboxFail(row.id, String(jobErr)).catch(() => { /* best effort */ });
+        await markOutboxFail(row.id, row.lease_token, String(jobErr)).catch(() => { /* best effort */ });
       }
     }
   } catch (err) {

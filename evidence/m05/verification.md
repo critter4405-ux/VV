@@ -1,14 +1,14 @@
-# M05 „Mitglieder" — Verifikation (Bau-KI, Phase B)
+# M05 „Mitglieder" — Verifikation (Bau-KI, Phase B + Reparaturrunde 1)
 
-> **Stand:** 24.09.2026 · **Bau-KI:** Claude Code + Opus 5.5 · **Umgebung:** echte PostgreSQL 16.13, frisch aufgesetzt (Migrationen 0001–0010 + synthetische Seeds), wie CI-Job `db-integration`.
+> **Stand:** 24.09.2026 · **Bau-KI:** Claude Code + Opus 5.5 · **Umgebung:** echte PostgreSQL 16.13, frisch aufgesetzt (Migrationen 0001–0011 + synthetische Seeds), wie CI-Job `db-integration`.
 > **Wichtig:** Das hier ist der Nachweis der **Bau-KI**. Das unabhängige Vier-Augen-Review (Codex + Gemini) wiederholt die Prüfung selbst und übernimmt diese Nachweise **nicht**.
 
 ## Ergebnis auf einen Blick
 
-- **DB-Gegenproben:** M05/BASIS-02 **122/122** + Stage-0-Sicherheitsproben **17/17** (inkl. neuer S0-1/S0-2) — [db-asserts.txt](db-asserts.txt), maschinenlesbar [db-asserts.json](db-asserts.json).
-- **Validatoren LIVE:** alle 10 Checks PASS, `gate_passed=true` — [validator-report.json](validator-report.json).
-- **Validator-Selbsttest:** 12/12 (5 neue Umgehungsproben) — [tests.txt](tests.txt).
-- **Tests:** Web 17/17 (inkl. API end-to-end gegen DB), Worker 12/12 (inkl. Outbox → Worker → Wirkung genau einmal); Typecheck web/worker rc=0; `npm audit` 0; `docker compose config` valide (5 Dienste).
+- **DB-Gegenproben:** M05/BASIS-02 **133/133** + Stage-0-Sicherheitsproben **33/33** (inkl. S0-1/S0-2 und Retrofit-Proben R1/R3/R4/R5/R8) — [db-asserts.txt](db-asserts.txt), maschinenlesbar [db-asserts.json](db-asserts.json).
+- **Validatoren LIVE:** alle 10 Checks PASS (Tabellen-Abgleich 25/25 inkl. `approval_effect_permission`), `gate_passed=true` — [validator-report.json](validator-report.json).
+- **Validator-Selbsttest:** 14/14 (inkl. R6: CI/CodeQL-Trigger auf realem Hauptbranch) — [tests.txt](tests.txt).
+- **Tests:** Web 18/18 (inkl. API end-to-end gegen DB, Scope-Semantik R7), Worker 18/18 (inkl. R2/R3-Adversarial, G-1-Import-Andockung, R5-Topic-Filter, Outbox → Worker → Wirkung genau einmal); Typecheck web/worker rc=0; `npm audit` 0; `docker compose config` valide (5 Dienste).
 
 ## Akzeptanzkriterien (Steckbrief VV-M05)
 
@@ -37,6 +37,24 @@
 - **V-1 (mittel, Validator ADR-01):** Statement-Reihenfolge je Datei ignoriert → idempotentes `DROP POLICY IF EXISTS; CREATE POLICY` galt als fehlend. Fix: textuelle Reihenfolge; Selbsttest für beide Richtungen.
 - **V-2 (mittel, Validator ADR-04):** nur der erste Guard je Datei geprüft; DB-Fachbefehle (`SELECT m05_…()`) nicht als Schreibzugriff erkannt. Fix: Prüfung je exportierter Aktion inkl. lokaler Helfer; Fachbefehle nur in `*.action.ts`. Selbsttest für 3 Umgehungen.
 
+## Reparaturrunde 1 — Sicherheits-Retrofit (Register P52)
+
+Verifiziert und eingestuft vor dem Fix (Betreiber bestätigt): R1–R6 echt · R7 teilweise echt (M05-Reads korrekt, Stage-0-Demo-Reads zu breit) · R8 echt, latent (bindende Wirkung durch Einmal-Consume geschützt) · G-1/G-2/G-3 echt · keine Dubletten zwischen Gemini und R1–R8 (G-1 nutzt den R5-Mechanismus). Je Fix eine gate-blockierende Gegenprobe:
+
+| Befund | Gegenprobe (Datei) | Ergebnis |
+|---|---|---|
+| R1 Audit-Spoofing | 6 Proben in `ci_db_asserts.sh` (INSERT/OVERRIDING/Anchor/`vv_audit_write` verweigert, reservierte Aktion abgewiesen, Actor aus Kontext) · `policy.test.ts` | grün |
+| R2 Executor mit Aufrufer-Handler | 4 adversariale Tests in `vier_augen.test.ts` | grün |
+| R3 Attestation optional | 3 Proben in `ci_db_asserts.sh` (NULL-Reviewer, gleiche Familie, CHECK als Eigentümer) · `vier_augen.test.ts` | grün |
+| R4 Freigabe ohne Rolle × Scope | 3 Proben `ci_db_asserts.sh` (Trainer, unbekannter Actor, Effekt ohne Zuordnung) + 2 in `m05_db_asserts.py` (Kassier freigeben/ablehnen direkt) | grün |
+| R5 Quittung ohne Consumer | 2 Proben `ci_db_asserts.sh` (geparkt, NULL-Topics) · Worker-Integrationstest (`m05.membership.ended` bleibt geparkt) | grün |
+| R6 CI-Trigger | 2 Proben `validators/selftest.py` (rot bei Entfernen von `master` nachgewiesen) | grün |
+| R7 Policy-Scope | `policy.test.ts` R7 · 2 Proben `m05_db_asserts.py` (Trainer irgendwo ja / Wurzel nein; Obmann Wurzel ja) | grün |
+| R8 Lease-Fencing | 1 Probe `ci_db_asserts.sh` (alter Token f/f/f, neuer t) | grün |
+| G-1 Import nie ausgeführt | `m05_db_asserts.py` (Event bei Freigabe) · `m05.test.ts` (Handler, ohne Quelle Retry/DLQ) | grün |
+| G-2 Savepoint je Zeile | `m05_db_asserts.py` (kein `EXCEPTION WHEN`; 3.005 Zeilen in 1 Tx, ungültige als Konflikt, 2,4 s) | grün |
+| G-3 Re-Request-Loop | `m05_db_asserts.py` (Hold +12 M. via `m05_decide` und direkt; Audit `m05.retention.hold`; kein Folgeantrag) | grün |
+
 ## Bewusst offen (dokumentiert, nicht Teil von M05 Phase 1)
 
 - **Erziehungsberechtigten-Sicht:** braucht die BASIS-01-Beziehung → bis dahin deny-by-default.
@@ -45,7 +63,9 @@
 - **Principal-Onboarding:** nur Betreiber-Pfad (Bootstrap-Funktion); Einladungsfluss mit BASIS-10.
 - **BASIS-07-Konsument** der M05-Events und Finanzbezug der Frist (bis dahin konservativ 7 J.).
 - **Import-Engine** (Staging/Dry-Run/Rollback, Werte-Mapping) = Sync/Q05; M05 liefert Schnittstelle + [Mapping v1](../../project/mappings/vereinsplaner.v1.json).
-- **Stage-0-Executor** `executeBindingEffect` löst generische Freigaben weiterhin getrennt von der Wirkung ein (Stage 0 unverändert); M05 nutzt den atomaren DB-Pfad.
+- **Stage-0-Executor** (R2 behoben): nur fest registrierte Handler, Produktions-Registry leer; M05/Q05 ausschließlich über den atomaren DB-Pfad.
+- **Q05-Zeilenquelle** für den angedockten Import (G-1): bis zum Q05-Bau endet ein freigegebener Import kontrolliert in Retry → DLQ (Technik-Eskalation), nie still quittiert.
+- **GitHub-Ruleset/Required Checks** (R6): kein Remote gesetzt → TODO bei Remote-Anlage; Trigger-Abdeckung per Selbsttest erzwungen.
 - **Supply-Chain:** Image-Digests weiterhin via `scripts/pin-images.sh` (Registry-Egress gesperrt, Stage-0-Residuum).
 
 ## Reproduzieren

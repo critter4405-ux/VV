@@ -22,9 +22,9 @@ export async function listRoleAssignments(ctx: { tenantId: string; actor: string
       const { rows } = await client.query(
         "SELECT id, person_id, role_type, scope_node, valid_to FROM role_assignment",
       );
-      await writeAudit(client, { tenantId: ctx.tenantId, actor: ctx.actor, action: "rbac.list" });
+      await writeAudit(client, { action: "app.rbac.list" });
       return { ok: true as const, rows };
-    });
+    }, ctx.actor);
   } finally {
     client.release();
   }

@@ -13,7 +13,9 @@ export interface Ctx { tenantId: string; actor: string }
 export type ErrorKind = "forbidden" | "not_found" | "conflict" | "invalid" | "internal";
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ErrorKind; reason: string };
 
-const SCOPE = "verein";   // grober App-Scope; die Objekt-/Scope-Prüfung erfolgt in der DB
+// "any": grobe Vorprüfung „Recht irgendwo" (R7). Zulässig NUR, weil JEDE M05-DB-Funktion das Recht
+// je Objekt mit den Scopes der Zielperson erneut prüft (m05_require/m05_member_rows/vv_authorize).
+const SCOPE = "any";
 
 /** SQLSTATE -> fachlicher Fehler. Interne Details (Stack, SQL) verlassen den Server nie. */
 export function mapDbError(err: unknown): { ok: false; error: ErrorKind; reason: string } {
@@ -91,10 +93,12 @@ export async function newTypeVersion(ctx: Ctx, typeId: string, i: { validFrom: s
     [typeId, i.validFrom, i.noticeMonths, i.cutoff, i.youthAgeLimit, i.successorTypeId], (r) => ({ version: r[0].v as number }));
 }
 
-export async function updateSettings(ctx: Ctx, i: { lockAfterDays: number; retentionYears: number; agingUpLeadDays: number }) {
+export async function updateSettings(ctx: Ctx, i: { lockAfterDays: number; retentionYears: number; agingUpLeadDays: number;
+  holdExtensionMonths: number | null }) {
   const decision = await checkPolicy({ ...ctx, resource: "membership_type", action: "update", scopeNode: SCOPE, dataClass: "Oe" });
   if (!decision.allowed) { return denied(decision); }
-  return dbCall(ctx, "SELECT m05_settings_update($1,$2,$3)", [i.lockAfterDays, i.retentionYears, i.agingUpLeadDays], () => ({}));
+  return dbCall(ctx, "SELECT m05_settings_update($1,$2,$3,$4)",
+    [i.lockAfterDays, i.retentionYears, i.agingUpLeadDays, i.holdExtensionMonths], () => ({}));
 }
 
 // ---------------------------------------------------------------- Lebenszyklus (einfache Aktionen)

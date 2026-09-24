@@ -6,7 +6,7 @@
 
 ## Prüfgegenstand
 
-- **Migrationen:** `db/migrations/0006_rbac_core.sql` (BASIS-02-Kern), `0007_m05_schema.sql`, `0008_m05_functions.sql`, `0009_approval_insert_hardening.sql`, `0010_outbox_topic_guard.sql`; Seed `db/seed/0002_m05_synthetic.sql`.
+- **Migrationen:** `db/migrations/0006_rbac_core.sql` (BASIS-02-Kern), `0007_m05_schema.sql`, `0008_m05_functions.sql`, `0009_approval_insert_hardening.sql`, `0010_outbox_topic_guard.sql`, `0011_security_retrofit.sql` (Reparaturrunde 1: R1–R8, Stage-0-Sicherheits-Retrofit); Seed `db/seed/0002_m05_synthetic.sql`.
 - **App:** `apps/web/src/platform/policy.ts`, `apps/web/src/modules/mitglieder/*`, `apps/web/src/index.ts`.
 - **Worker:** `apps/worker/src/jobs/m05.ts`, `apps/worker/src/index.ts`, `apps/worker/src/agents/effects.ts`.
 - **Prüfwerkzeuge:** `validators/checks/adr01_rls.py`, `adr04_policy.py`, `validators/selftest.py`, `scripts/m05_db_asserts.py`, `scripts/ci_db_asserts.sh`, `.github/workflows/ci.yml`.
@@ -31,6 +31,7 @@
 9. **Validatoren/Tests:** Sind die Validator-Änderungen (ADR-01 Reihenfolge, ADR-04 je Aktion und Fachbefehle) korrekt oder umgehbar? Prüfen die Gegenproben das Behauptete wirklich (keine geschönten Nachweise)? Bleiben die Stage-0-Invarianten und -Gegenproben grün?
 10. **Stage-0-Nachhärtung (Migrationen 0009/0010, S0-1/S0-2/S0-3):** Ist der Befund korrekt beschrieben und der Fix vollständig? Bricht er einen Stage-0-Pfad?
 11. **Bau-Dossier (K29):** Sind die 9 Abschnitte vollständig, das Diagramm valide und die Evidenz-Links real?
+12. **Reparaturrunde 1 (Migration 0011 + Worker/Web, R1–R8, G-1–G-3):** Ist jeder Fix vollständig und nicht umgehbar? Konkret: Audit nur über `vv_audit_log` (kein Actor-Spoofing, kein Direkt-INSERT) · Executor ohne Aufrufer-Handler (R2) · Freigabe verlangt Fremdfamilie bei KI-Vorschlägen, auch im Consume (R3) · `vv_decide_approval` prüft Freigeber-Recht × Scope über `approval_effect_permission`, unbekannte Effekte deny (R4) · Outbox nur für konsumierte Topics, sonst geparkt (R5) · CI/CodeQL auf `master` (R6) · Policy-Scope `verein`/uuid/`any` (R7) · Lease-Fencing per Token (R8) · Import über Outbox + Worker angedockt, ohne Q05-Zeilenquelle kontrolliert DLQ (G-1) · Import ohne Savepoint je Zeile (G-2) · Legal Hold statt Dauer-Antrag (G-3).
 
 ## Rückgabe (Format)
 

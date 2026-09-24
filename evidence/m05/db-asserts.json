@@ -1,10 +1,10 @@
 {
-  "run": "58a0ed",
+  "run": "e6bcc3",
   "passed": true,
-  "total": 122,
+  "total": 133,
   "results": [
     {
-      "name": "Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)",
+      "name": "Migrationen 0006–0011 idempotent (erneuter Lauf fehlerfrei)",
       "ok": true
     },
     {
@@ -456,6 +456,10 @@
       "ok": true
     },
     {
+      "name": "G-1: freigegebener Import erzeugt Ereignis m05.import.approved für den Worker",
+      "ok": true
+    },
+    {
       "name": "Import mit anderen als den freigegebenen Zeilen verweigert (Hash)",
       "ok": true
     },
@@ -481,6 +485,46 @@
     },
     {
       "name": "importierte ausgetretene Mitgliedschaft wird gesperrt (Art. 18)",
+      "ok": true
+    },
+    {
+      "name": "G-2: m05_import_apply ohne EXCEPTION-Block (kein Savepoint je Zeile)",
+      "ok": true
+    },
+    {
+      "name": "G-2: 3.005-Zeilen-Batch in einer Transaktion ohne Savepoints (3.000 neu, ungültige Zeilen gemeldet)",
+      "ok": true
+    },
+    {
+      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (2.7 s)",
+      "ok": true
+    },
+    {
+      "name": "G-3: Ablehnung verlängert Aufbewahrung um 12 Monate (Legal Hold), kein neuer Antrag am Folgetag",
+      "ok": true
+    },
+    {
+      "name": "G-3: Legal Hold protokolliert",
+      "ok": true
+    },
+    {
+      "name": "G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag",
+      "ok": true
+    },
+    {
+      "name": "R4: Kassier (ohne Freigaberecht) kann M05-Antrag auch direkt über vv_decide_approval nicht freigeben",
+      "ok": true
+    },
+    {
+      "name": "R4: auch Ablehnen verlangt das Freigaberecht",
+      "ok": true
+    },
+    {
+      "name": "R7: Team-Trainer hat Recht 'irgendwo', aber NICHT an der Vereinswurzel",
+      "ok": true
+    },
+    {
+      "name": "R7: Obmann hat Wurzelrecht",
       "ok": true
     },
     {

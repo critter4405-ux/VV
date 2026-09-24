@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -132,11 +133,11 @@ def main() -> int:
     # ---------------------------------------------------------------- Migrationen idempotent (DoD 2)
     env = dict(os.environ, PGPASSWORD=PW)
     rc = 0
-    for f in sorted((REPO / "db" / "migrations").glob("00[01][0-9]*.sql")):
-        if f.name < "0006": continue
+    migs = [f for f in sorted((REPO / "db" / "migrations").glob("00[01][0-9]*.sql")) if f.name >= "0006"]
+    for f in migs:
         rc |= subprocess.run(["psql", "-q", "-v", "ON_ERROR_STOP=1", "-h", HOST, "-U", "vv_bootstrap", "-d", "vv",
                               "-f", str(f)], env=env, capture_output=True).returncode
-    check("Migrationen 0006–0010 idempotent (erneuter Lauf fehlerfrei)", rc == 0)
+    check(f"Migrationen 0006–{migs[-1].name[:4]} idempotent (erneuter Lauf fehlerfrei)", rc == 0 and len(migs) >= 6)
 
     # ---------------------------------------------------------------- Rollen/Grants (AK-08)
     r = one(BOOT, "SELECT rolsuper::text||rolbypassrls::text FROM pg_roles WHERE rolname='vv_definer'", tenant=None)
@@ -301,7 +302,7 @@ def main() -> int:
         e = err(lambda topic=topic: run(APP, "INSERT INTO outbox (tenant_id, topic, payload, idempotency_key) "
                                              "VALUES (%s,%s,'{}',%s)", (AA, topic, f"spoof-{topic}-{RUN}"), actor=SCHRIFT))
         check(f"Event-Spoofing verweigert: vv_app kann '{topic}' nicht in die Outbox schreiben", "reserviert" in e, e)
-    run(APP, "SELECT vv_decide_approval(%s,'approved')", (forged,), actor=VORSTAND)  # Stage-0-Grant direkt
+    run(APP, "SELECT vv_decide_approval(%s,'approved','gpt-5.3-codex')", (forged,), actor=VORSTAND)  # direkt, attestiert
     e = err(lambda: execute(forged))
     check("Freigabe ohne gebundenen M05-Antrag ist nicht ausführbar", "kein geprüfter M05-Antrag" in e, e)
 
@@ -511,8 +512,8 @@ def main() -> int:
         {"member_no": f"I{RUN}2", "person_id": p_i2, "type_code": f"aktiv_{RUN}", "entry_date": "2015-01-01",
          "status": "beendet", "exit_effective_date": "2024-12-31", "end_kind": "ausgetreten"},
         {"member_no": f"I{RUN}3", "person_id": p_i1, "type_code": f"aktiv_{RUN}", "entry_date": "2020-01-01", "status": "aktiv"},
-        {"member_no": f"I{RUN}4", "person_id": str(uuid.uuid4()), "type_code": "gibtsnicht", "entry_date": "2020-01-01",
-         "status": "aktiv"},
+        {"member_no": f"I{RUN}4", "person_id": new_person("ImportDrei", "1997-03-03"), "type_code": "gibtsnicht",
+         "entry_date": "2020-01-01", "status": "aktiv"},
     ]
     rows_json = json.dumps(rows)
     h = one(BOOT, "SELECT encode(digest(convert_to(%s::jsonb::text,'UTF8'),'sha256'),'hex')", (rows_json,), tenant=None)
@@ -525,6 +526,8 @@ def main() -> int:
     e = err(lambda: run(APP, "SELECT m05_import_decide(%s,'approved')", (batch,), actor=SCHRIFT))
     check("Import-Selbstfreigabe/ohne Recht abgewiesen", e != "", e)
     run(APP, "SELECT m05_import_decide(%s,'approved')", (batch,), actor=VORSTAND)
+    ev_imp = one(BOOT, "SELECT count(*) FROM outbox WHERE topic='m05.import.approved' AND payload->>'batch_ref'=%s", (batch,))
+    check("G-1: freigegebener Import erzeugt Ereignis m05.import.approved für den Worker", ev_imp == 1)
     tampered = json.dumps(rows[:3] + [dict(rows[3], type_code=f"aktiv_{RUN}")])
     e = err(lambda: run(WK, "SELECT m05_import_apply(%s,%s::jsonb)", (batch, tampered)))
     check("Import mit anderen als den freigegebenen Zeilen verweigert (Hash)", "weichen" in e, e)
@@ -549,6 +552,88 @@ def main() -> int:
     imp_st = one(BOOT, "SELECT p.status FROM membership_period p JOIN member m ON m.id=p.member_id WHERE m.member_no=%s",
                  (f"I{RUN}2",))
     check("importierte ausgetretene Mitgliedschaft wird gesperrt (Art. 18)", imp_st == "gesperrt", f"{imp_st} {j7}")
+
+    # ---------------------------------------------------------------- G-2: Import ohne Savepoint je Zeile
+    src = one(BOOT, "SELECT prosrc FROM pg_proc WHERE proname='m05_import_apply'", tenant=None)
+    check("G-2: m05_import_apply ohne EXCEPTION-Block (kein Savepoint je Zeile)", re.search(r"EXCEPTION\s+WHEN", src, re.I) is None)
+    bad_rows = [
+        "kein-objekt",
+        {"member_no": f"J{RUN}1", "person_id": "keine-uuid", "type_code": f"aktiv_{RUN}", "entry_date": "2020-01-01", "status": "aktiv"},
+        {"member_no": f"J{RUN}2", "person_id": p_i1, "type_code": f"aktiv_{RUN}", "entry_date": "2026-02-30", "status": "aktiv"},
+        {"member_no": "ungültig nr!", "person_id": p_i1, "type_code": f"aktiv_{RUN}", "entry_date": "2020-01-01", "status": "aktiv"},
+        {"member_no": f"J{RUN}3", "person_id": new_person("ImportVier", "1990-01-01"), "type_code": f"aktiv_{RUN}",
+         "entry_date": "2020-05-01", "status": "beendet", "exit_effective_date": "2019-01-01", "end_kind": "ausgetreten"},
+    ]
+    many = [bad_rows[0], *bad_rows[1:]]
+    big_pids = [str(uuid.uuid4()) for _ in range(3000)]
+    run(BOOT, "INSERT INTO person (id, tenant_id, last_name, first_name, birth_date) "
+              "SELECT unnest(%s::uuid[]), %s, 'Massentest', 'Synth', '1990-01-01'", (big_pids, AA))
+    many += [{"member_no": f"G{RUN}{i:05d}", "person_id": pid, "type_code": f"aktiv_{RUN}", "entry_date": "2021-01-01",
+              "status": "aktiv"} for i, pid in enumerate(big_pids)]
+    mj = json.dumps(many)
+    hm = one(BOOT, "SELECT encode(digest(convert_to(%s::jsonb::text,'UTF8'),'sha256'),'hex')", (mj,), tenant=None)
+    bm = f"M{RUN}"
+    run(APP, "SELECT m05_import_request(%s,%s,%s)", (bm, hm, len(many)), actor=SCHRIFT)
+    run(APP, "SELECT m05_import_decide(%s,'approved')", (bm,), actor=OBMANN)
+    import time as _t
+    t0 = _t.monotonic()
+    rm = one(WK, "SELECT m05_import_apply(%s,%s::jsonb)", (bm, mj))
+    dt = _t.monotonic() - t0
+    codes = sorted(c["code"] for c in rm["konflikte"])
+    check("G-2: 3.005-Zeilen-Batch in einer Transaktion ohne Savepoints (3.000 neu, ungültige Zeilen gemeldet)",
+          rm["neu"] == 3000 and codes == sorted(["zeile_kein_objekt", "person_id_ungueltig", "eintrittsdatum_ungueltig",
+                                                  "mitgliedsnummer_fehlt_oder_ungueltig", "austritt_vor_eintritt"]),
+          f"{rm['neu']} {codes}")
+    check(f"G-2: Laufzeit 3.005 Zeilen < 60 s ({dt:.1f} s)", dt < 60)
+
+    # ---------------------------------------------------------------- G-3: abgelehnte Anonymisierung = Legal Hold
+    def locked_due_period(tag: str) -> str:
+        per = apply_admit(new_person(tag, "1950-01-01"), f"H{RUN}{tag}"[:32], t_unt)
+        ap = one(APP, "SELECT m05_request_termination(%s,'verstorben',NULL,NULL,NULL,NULL,m05_today(),%s)",
+                 (per, version(per)), actor=SCHRIFT)
+        run(APP, "SELECT m05_decide(%s,'approved')", (ap,), actor=VORSTAND)
+        execute(ap)
+        one(WK, "SELECT m05_job_daily()")                       # beendet -> gesperrt
+        backdate(per, retention_until=today)
+        one(WK, "SELECT m05_job_daily()")                       # Anonymisierungs-Antrag
+        return per
+    per_h1 = locked_due_period("HoldEins")
+    ap_h1 = one(BOOT, "SELECT approval_id FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize' "
+                      "AND closed_at IS NULL", (per_h1,))
+    run(APP, "SELECT m05_decide(%s,'rejected')", (ap_h1,), actor=VORSTAND)
+    ru = one(BOOT, "SELECT retention_until FROM membership_period WHERE id=%s", (per_h1,))
+    exp_ru = one(BOOT, "SELECT (m05_today() + interval '12 months')::date")
+    j_h = one(WK, "SELECT m05_job_daily()")
+    n_req = one(BOOT, "SELECT count(*) FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize'",
+                (per_h1,))
+    check("G-3: Ablehnung verlängert Aufbewahrung um 12 Monate (Legal Hold), kein neuer Antrag am Folgetag",
+          ru == exp_ru and n_req == 1 and status(per_h1) == "gesperrt", f"{ru} vs {exp_ru}, Anträge={n_req}, {j_h}")
+    hold_audit = one(BOOT, "SELECT count(*) FROM audit_log WHERE action='m05.retention.hold' AND subject_ref=%s", (per_h1,))
+    check("G-3: Legal Hold protokolliert", hold_audit == 1)
+    per_h2 = locked_due_period("HoldZwei")
+    ap_h2 = one(BOOT, "SELECT approval_id FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize' "
+                      "AND closed_at IS NULL", (per_h2,))
+    run(APP, "SELECT vv_decide_approval(%s,'rejected')", (ap_h2,), actor=VORSTAND)   # am m05_decide vorbei
+    j_h2 = one(WK, "SELECT m05_job_daily()")
+    n_req2 = one(BOOT, "SELECT count(*) FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize'",
+                 (per_h2,))
+    ru2 = one(BOOT, "SELECT retention_until > m05_today() FROM membership_period WHERE id=%s", (per_h2,))
+    check("G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag",
+          j_h2.get("retention_hold", 0) >= 1 and n_req2 == 1 and ru2 is True, f"{j_h2} Anträge={n_req2}")
+
+    # ---------------------------------------------------------------- R4/R7 im M05-Kontext
+    ap_r4 = one(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),NULL,NULL,NULL,NULL,%s)",
+                (per_w, version(per_w)), actor=SCHRIFT)
+    e = err(lambda: run(APP, "SELECT vv_decide_approval(%s,'approved')", (ap_r4,), actor=KASSIER))
+    check("R4: Kassier (ohne Freigaberecht) kann M05-Antrag auch direkt über vv_decide_approval nicht freigeben",
+          "kein Recht" in e, e)
+    e = err(lambda: run(APP, "SELECT vv_decide_approval(%s,'rejected')", (ap_r4,), actor=TRAINER))
+    check("R4: auch Ablehnen verlangt das Freigaberecht", "kein Recht" in e, e)
+    tr_root = one(APP, "SELECT vv_authorize('membership','read','S',NULL,NULL)", actor=TRAINER)
+    tr_any = one(APP, "SELECT vv_policy_any('membership','read','S')", actor=TRAINER)
+    check("R7: Team-Trainer hat Recht 'irgendwo', aber NICHT an der Vereinswurzel", tr_any is True and tr_root is False)
+    ob_root = one(APP, "SELECT vv_authorize('membership','read','S',NULL,NULL)", actor=OBMANN)
+    check("R7: Obmann hat Wurzelrecht", ob_root is True)
 
     # ---------------------------------------------------------------- Audit-Kette intakt (ADR-05)
     bad = one(BOOT, """

@@ -4,7 +4,7 @@
 name: codeql
 on:
   push:
-    branches: [ main, "stage-*" ]
+    branches: [ master, main, "stage-*", "feat/**" ]   # R6/H-14: realer Hauptbranch `master`
   pull_request:
   schedule:
     - cron: "0 3 * * 1"   # wöchentlich Montag 03:00 UTC

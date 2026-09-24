@@ -1,7 +1,7 @@
 // M05-Worker — Unit-Tests (Fake-Pool): fail-closed bei ungültigen Events, Tenant-Kontext, Rollback.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleM05Outbox, runM05Daily } from "./m05.ts";
+import { handleM05Outbox, runM05Daily, M05_TOPICS } from "./m05.ts";
 
 function fakeDb(opts: { fail?: boolean } = {}) {
   const log: string[] = [];
@@ -47,4 +47,25 @@ test("Tagesjob läuft je Mandant", async () => {
   const r = await runM05Daily(f.db);
   assert.deepEqual(Object.keys(r), [T]);
   assert.ok(f.log.some((l) => l.includes("m05_job_daily")));
+});
+
+test("G-1) m05.import.approved ohne Q05-Zeilenquelle: sichtbarer Fehler (Retry/DLQ), keine Quittung", async () => {
+  const f = fakeDb();
+  await assert.rejects(handleM05Outbox({ id: "x", tenant_id: T, topic: "m05.import.approved",
+    payload: { batch_ref: "VP-2026-01", approval_id: A } }, f.db), /keine Q05-Zeilenquelle/);
+  assert.equal(f.log.length, 0, "ohne Zeilen kein DB-Aufruf");
+});
+
+test("G-1) m05.import.approved mit Zeilenquelle: m05_import_apply in Tenant-Transaktion", async () => {
+  const f = fakeDb();
+  const src = { rowsFor: async (_t: string, b: string) => (b === "VP-2026-01" ? [{ member_no: "X1" }] : null) };
+  assert.equal(await handleM05Outbox({ id: "x", tenant_id: T, topic: "m05.import.approved",
+    payload: { batch_ref: "VP-2026-01" } }, f.db, src), true);
+  assert.ok(f.log.some((l) => l.includes("m05_import_apply") && l.includes("VP-2026-01")));
+  await assert.rejects(handleM05Outbox({ id: "x", tenant_id: T, topic: "m05.import.approved",
+    payload: { batch_ref: "../evil" } }, f.db, src), /batch_ref/);
+});
+
+test("R5) Consumer-Topics sind explizit (Worker claimt nur diese)", () => {
+  assert.deepEqual([...M05_TOPICS].sort(), ["m05.execute", "m05.import.approved"]);
 });

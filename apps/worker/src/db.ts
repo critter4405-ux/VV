@@ -9,21 +9,27 @@ if (!connectionString) throw new Error("WORKER_DATABASE_URL fehlt (vv_worker-Ver
 export const pool = new Pool({ connectionString, max: 4 });
 
 export interface OutboxRow {
-  id: string; tenant_id: string; topic: string; payload: unknown;
+  id: string; tenant_id: string; topic: string; payload: unknown; lease_token: string;
 }
 
-/** Atomarer Claim über die SECURITY-DEFINER-Funktion (RLS-übergreifend, ohne BYPASSRLS). */
-export async function claimOutbox(max = 10): Promise<OutboxRow[]> {
+/** Atomarer Claim über die SECURITY-DEFINER-Funktion (RLS-übergreifend, ohne BYPASSRLS).
+ *  M05-Reparaturrunde 1: NUR die Topics, die dieser Worker konsumiert (R5/H-06) — alle anderen
+ *  Events bleiben geparkt; jede geclaimte Zeile trägt ein Lease-Token (R8/H-07, Fencing). */
+export async function claimOutbox(max: number, topics: readonly string[]): Promise<OutboxRow[]> {
+  if (topics.length === 0) return [];
   const { rows } = await pool.query(
-    "SELECT id, tenant_id, topic, payload FROM vv_outbox_claim($1)", [max]);
+    "SELECT id, tenant_id, topic, payload, lease_token FROM vv_outbox_claim($1, $2::text[])", [max, topics]);
   return rows as OutboxRow[];
 }
 
-export async function markOutboxDone(id: string): Promise<void> {
-  await pool.query("SELECT vv_outbox_done($1)", [id]);
+/** Quittieren nur mit gültigem Lease-Token; false = Lease verloren (anderer Worker hat übernommen). */
+export async function markOutboxDone(id: string, leaseToken: string): Promise<boolean> {
+  const { rows } = await pool.query("SELECT vv_outbox_done($1, $2) AS ok", [id, leaseToken]);
+  return rows[0]?.ok === true;
 }
 
-/** Fehlgeschlagene Zustellung: nach N Versuchen in die DLQ (dead_at), sonst Retry (Gemini MITTEL). */
-export async function markOutboxFail(id: string, err: string): Promise<void> {
-  await pool.query("SELECT vv_outbox_fail($1, $2, 5)", [id, err]);
+/** Fehlgeschlagene Zustellung (Token-gebunden): nach N Versuchen DLQ (dead_at), sonst Retry. */
+export async function markOutboxFail(id: string, leaseToken: string, err: string): Promise<boolean> {
+  const { rows } = await pool.query("SELECT vv_outbox_fail($1, $2, $3, 5) AS ok", [id, leaseToken, err]);
+  return rows[0]?.ok === true;
 }

@@ -64,13 +64,60 @@ export async function assertExecutable(
   await store.consume(ctx.tenantId, effectId, ctx.subjectRef);
 }
 
-/**
- * DER EINZIGE Pfad zu einer bindenden Senke. Erst Freigabe atomar einlösen, dann Handler.
- * So kann kein Aufrufer den Handler unter Umgehung des Vier-Augen-Gates erreichen.
- */
-export async function executeBindingEffect<T>(
-  effectId: string, ctx: ExecContext, store: ApprovalStore, handler: () => Promise<T>,
-): Promise<T> {
-  await assertExecutable(effectId, ctx, store);
-  return handler();
+// ---------------------------------------------------------------------------------------------
+// M05-Reparaturrunde R2 (B-03): Der Handler einer bindenden Senke wird NICHT mehr vom Aufrufer
+// übergeben (vorher: executeBindingEffect(id, ctx, store, handler) -> `("reminder.dispatch", …,
+// () => pay())` lief ohne Freigabe). Jetzt:
+//  - Handler sind in einer beim Start EINGEFRORENEN Registry fest an die Effekt-ID gebunden
+//    (createExecutor prüft: nur bindende Effekte mit execution="handler", keine Duplikate).
+//  - Der Executor nimmt nur (effectId, ctx, store): nicht-bindende IDs, DB-atomare Effekte
+//    (M05: nur m05_execute in der DB) und Effekte ohne registrierten Handler sind NICHT ausführbar.
+//  - Erst atomarer DB-Consume der Freigabe, dann der fest registrierte Handler.
+// ---------------------------------------------------------------------------------------------
+export type BindingHandler = (ctx: ExecContext) => Promise<unknown>;
+
+export interface BindingExecutor {
+  /** Führt die fest registrierte Senke des bindenden Effekts aus — nur mit eingelöster Freigabe. */
+  execute(effectId: string, ctx: ExecContext, store: ApprovalStore): Promise<unknown>;
+  readonly effects: readonly string[];
+}
+
+export function createExecutor(handlers: Readonly<Record<string, BindingHandler>>): BindingExecutor {
+  const table = new Map<string, BindingHandler>();
+  for (const [effectId, fn] of Object.entries(handlers)) {
+    const def = getEffect(effectId);
+    if (!def) throw new Error(`Handler für unbekannten Effekt '${effectId}' (fail-closed)`);
+    if (!def.binding || def.execution !== "handler") {
+      throw new Error(`Effekt '${effectId}' ist nicht als bindende Handler-Senke klassifiziert (${def.execution})`);
+    }
+    if (typeof fn !== "function") throw new Error(`Handler für '${effectId}' ist keine Funktion`);
+    table.set(effectId, fn);
+  }
+  Object.freeze(table);
+  return Object.freeze({
+    effects: Object.freeze([...table.keys()]),
+    async execute(effectId: string, ctx: ExecContext, store: ApprovalStore): Promise<unknown> {
+      const def = getEffect(effectId);
+      if (!def) throw new Error(`Unbekannter Effekt '${effectId}' (fail-closed) — nicht ausführbar`);
+      if (!def.binding) {
+        throw new Error(`Effekt '${effectId}' ist nicht bindend — über den Vier-Augen-Executor nicht ausführbar`);
+      }
+      if (def.execution === "db-atomic") {
+        throw new Error(`Effekt '${effectId}' ist nur DB-atomar ausführbar (Freigabe + Wirkung in einer Transaktion)`);
+      }
+      const handler = table.get(effectId);
+      if (!handler) throw new Error(`Kein fest registrierter Handler für '${effectId}' (fail-closed)`);
+      await assertExecutable(effectId, ctx, store);   // atomarer Einmal-Consume (wirft sonst)
+      return handler(ctx);
+    },
+  });
+}
+
+/** Produktions-Registry: in Stage 0 / M05 gibt es noch KEINE TS-Handler-Senke (M05 läuft DB-atomar).
+ *  Neue Senken werden hier (Code, Review) registriert — nie zur Laufzeit vom Aufrufer. */
+export const PRODUCTION_EXECUTOR: BindingExecutor = createExecutor({});
+
+/** DER EINZIGE Pfad zu einer bindenden TS-Senke (kein Handler-Parameter). */
+export async function executeBindingEffect(effectId: string, ctx: ExecContext, store: ApprovalStore): Promise<unknown> {
+  return PRODUCTION_EXECUTOR.execute(effectId, ctx, store);
 }

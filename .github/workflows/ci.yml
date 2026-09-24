@@ -7,7 +7,9 @@ name: vv-ci
 
 on:
   push:
-    branches: [ main, "stage-*", "feat/**" ]
+    # R6/H-14 (M05-Reparaturrunde 1): realer Hauptbranch ist `master` — beide Namen abgedeckt,
+    # Selbsttest (validators/selftest.py) erzwingt das. Ruleset/Required Checks: TODO bei Remote-Anlage.
+    branches: [ master, main, "stage-*", "feat/**" ]
   pull_request:
 
 jobs:
