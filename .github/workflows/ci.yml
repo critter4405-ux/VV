@@ -1,4 +1,4 @@
-# VV CI — Stage 0. Build + Validatoren gate-blockierend. NUR synthetische Daten (ADR-10).
+# VV CI — Stage 0 + Modul M05. Build + Validatoren gate-blockierend. NUR synthetische Daten (ADR-10).
 # Supply-Chain: alle GitHub-Actions auf Commit-SHA gepinnt (Versions-Tag als Kommentar),
 # Dependabot (github-actions + docker) hält die SHAs/Digests aktuell. Container-Images werden
 # per scripts/pin-images.sh auf @sha256-Digest gepinnt (in einer Umgebung mit Registry-Zugang
@@ -72,11 +72,30 @@ jobs:
         run: |
           N=$(PGPASSWORD=change_me_dev_only psql -tA -h localhost -U vv_app -d vv -c "SELECT count(*) FROM person")
           echo "sichtbar ohne Tenant-Kontext: $N"; test "$N" = "0"
-      - name: Sicherheits-DB-Gegenproben (RLS, Outbox, approved_by/SoD, DLQ-Reaper) — gate-blockierend
+      - name: Sicherheits-DB-Gegenproben (RLS, Outbox, approved_by/SoD, DLQ-Reaper, M05) — gate-blockierend
         env:
           VV_PGHOST: localhost
           PW: change_me_dev_only
-        run: bash scripts/ci_db_asserts.sh
+        run: bash scripts/ci_db_asserts.sh   # ruft scripts/m05_db_asserts.py (M05/BASIS-02, adversarial) auf
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: "22" }
+      - name: M05-API-Integrationstest gegen echte PostgreSQL (vv_app, RLS aktiv)
+        working-directory: apps/web
+        env:
+          DATABASE_URL: "postgres://vv_app:change_me_dev_only@localhost:5432/vv"
+          VV_REQUIRE_DB: "1"   # ohne DB -> Fehler, nie stiller Skip
+        run: |
+          npm ci
+          npm test
+      - name: M05-Worker-Integrationstest (Freigabe -> Outbox -> Worker -> Wirkung, genau einmal)
+        working-directory: apps/worker
+        env:
+          DATABASE_URL: "postgres://vv_app:change_me_dev_only@localhost:5432/vv"
+          WORKER_DATABASE_URL: "postgres://vv_worker:change_me_dev_only@localhost:5432/vv"
+          VV_REQUIRE_DB: "1"
+        run: |
+          npm ci
+          npm test
 
   typecheck-web:
     name: Typecheck Web/API
@@ -88,6 +107,8 @@ jobs:
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
+      - name: Unit-Tests Web (Policy-Prüfpunkt, M05-Validierung)
+        run: npm test
 
   typecheck-worker:
     name: Typecheck + Vier-Augen-Test Worker

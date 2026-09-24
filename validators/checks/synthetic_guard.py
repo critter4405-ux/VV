@@ -11,7 +11,7 @@ from ..common import REPO, CheckResult, Finding
 
 SKIP_DIRS = {".git", "node_modules", ".next", "__pycache__", ".venv", "venv", "dist"}
 SKIP_NAMES = {"mermaid.min.js"}
-SKIP_RELPATHS = {"evidence/stage-0/validator-report.json"}   # eigener Output
+SKIP_RELPATHS = {"evidence/stage-0/validator-report.json", "evidence/m05/validator-report.json"}   # eigener Output
 # .zip/.xlsx werden ENTPACKT (nicht übersprungen) — Review-Runde 2, Codex #8-new.
 BINARY_EXT = {".png", ".jpg", ".jpeg", ".webp", ".ico", ".gz", ".pdf", ".woff", ".woff2"}
 ARCHIVE_EXT = {".zip", ".xlsx", ".xlsm", ".docx", ".pptx", ".odt", ".ods"}   # allesamt ZIP-Container

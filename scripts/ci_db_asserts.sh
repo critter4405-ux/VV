@@ -33,7 +33,7 @@ O=$(q vv_app <<<"SELECT vv_outbox_claim(1)" 2>&1); echo "$O" | grep -qi "permiss
 
 # H1: approved_by-Bindung
 q vv_app >/dev/null 2>&1 <<SQL
-BEGIN; SELECT set_config('app.tenant_id','$AA',true);
+BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT set_config('app.actor','agent-1',true);
 INSERT INTO approval(tenant_id,kind,effect_id,subject_ref,requested_by,builder_model) VALUES ('$AA','deletion','person.delete','ci1','agent-1','claude'); COMMIT;
 SQL
 O=$(q vv_app <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); UPDATE approval SET approved_by='x',status='approved' WHERE subject_ref='ci1'; COMMIT;" 2>&1); echo "$O" | grep -qi "permission denied"; ck "H1: vv_app UPDATE approval.approved_by denied" $?
@@ -49,6 +49,17 @@ AB=$(q vv_app <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT s
 C1=$(q vv_worker <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT (vv_consume_approval('person.delete','ci1') IS NOT NULL); COMMIT;" | grep -iE '^(t|f)$' | head -1)
 C2=$(q vv_worker <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT (vv_consume_approval('person.delete','ci1') IS NOT NULL); COMMIT;" | grep -iE '^(t|f)$' | head -1)
 [ "$C1" = t ] && [ "$C2" = f ]; ck "H1: Consume einmal, Replay ROT ($C1/$C2)" $?
+
+# S0-1/S0-2 (im M05-Bau entdeckt, Migration 0009): gefälschte Freigabe beim INSERT
+q vv_app >/dev/null 2>&1 <<SQL
+BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT set_config('app.actor','agent-9',true);
+INSERT INTO approval(tenant_id,kind,effect_id,subject_ref,requested_by,builder_model,status,approved_by,decided_at)
+VALUES ('$AA','deletion','person.delete','ci-forge','agent-9','claude','approved','human-x',now()); COMMIT;
+SQL
+FS=$(q vv_bootstrap <<<"SELECT status||'/'||coalesce(approved_by,'-') FROM approval WHERE subject_ref='ci-forge'")
+[ "$FS" = "pending/-" ]; ck "S0-1: vv_app kann keine bereits genehmigte Freigabe einfügen ($FS)" $?
+O=$(q vv_app <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT set_config('app.actor','agent-9',true); INSERT INTO approval(tenant_id,kind,effect_id,subject_ref,requested_by) VALUES ('$AA','deletion','person.delete','ci-spoof','someone-else'); COMMIT;" 2>&1)
+echo "$O" | grep -qi "Antragsteller-Spoofing"; ck "S0-2: requested_by ≠ app.actor abgewiesen" $?
 
 # Audit append-only inkl. TRUNCATE
 O=$(q vv_bootstrap <<<"TRUNCATE audit_log" 2>&1); echo "$O" | grep -qi "append-only"; ck "Audit: TRUNCATE für Eigentümer blockiert" $?
@@ -104,6 +115,9 @@ DID=$(q vv_bootstrap <<<"SELECT id FROM outbox WHERE idempotency_key='cidz'" | g
 q vv_worker >/dev/null 2>&1 <<<"SELECT vv_outbox_done('$DID')"
 DZ2=$(q vv_bootstrap <<<"SELECT (dead_at IS NULL)::text||'/'||(processed_at IS NOT NULL)::text FROM outbox WHERE idempotency_key='cidz'")
 [ "$DZ1" = true ] && [ "$DZ2" = true/true ]; ck "Kein Doppelzustand: Spät-Erfolg räumt dead_at ab (tot=$DZ1 -> clean/done=$DZ2)" $?
+
+# M05/BASIS-02 (Modul-Bau): umfassende adversariale DB-Gegenproben (Python, psycopg)
+if python3 "$(dirname "$0")/m05_db_asserts.py"; then pass "M05-Gegenproben (scripts/m05_db_asserts.py)"; else fail "M05-Gegenproben (scripts/m05_db_asserts.py)"; fi
 
 echo "----"
 [ "$FAIL" = 0 ] && echo "Alle Sicherheits-Gegenproben grün." || { echo "SICHERHEITS-GEGENPROBE FEHLGESCHLAGEN"; exit 1; }

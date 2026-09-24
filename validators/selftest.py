@@ -49,8 +49,28 @@ try:
       "  await pool.query(\"UPDATE person SET status='x'\");\n"
       "  return { ok:true };\n}\n")
 
+    # M05-Bau: zweite, ungeschützte Aktion in derselben Datei + Helfer-Aufruf VOR dem Guard
+    w("_st_multi.action.ts",
+      'import { checkPolicy } from "../../platform/policy.ts";\n'
+      'import { pool } from "../../db.ts";\n'
+      'async function helper(){ return pool.query("SELECT m05_apply(1)"); }\n'
+      'export async function ok1(c:any){\n'
+      '  const decision = await checkPolicy(c);\n  if (!decision.allowed) { return 1; }\n  return helper();\n}\n'
+      'export async function unguarded(c:any){\n  return helper();\n}\n'
+      'export async function early(c:any){\n  await helper();\n'
+      '  const decision = await checkPolicy(c);\n  if (!decision.allowed) { return 1; }\n  return 2;\n}\n')
+    # Fachbefehl (DB-Funktion) außerhalb einer *.action.ts
+    w("_st_bypass.ts", 'import { pool } from "../../db.ts";\nexport const x = () => pool.query("SELECT m05_admit($1,$2,$3)");\n')
+
     from validators.checks import adr02_imports as a2, adr04_policy as a4
     r2 = a2.run(); r4 = a4.run()
+    multi = [f for f in r4.findings if "_st_multi" in f.detail]
+    expect("ADR-04: zweite ungeschützte Aktion je Datei wird ROT",
+           any(not f.ok and "unguarded()" in f.detail for f in multi))
+    expect("ADR-04: Helfer-/DB-Zugriff vor dem Guard wird ROT",
+           any(not f.ok and "early()" in f.detail and "VOR dem Policy-Guard" in f.detail for f in multi))
+    expect("ADR-04: DB-Fachbefehl außerhalb *.action.ts wird ROT",
+           any("_st_bypass" in f.detail and not f.ok for f in r4.findings))
     expect("ADR-02: dyn. import(`../${x}/...`) wird ROT", any("_st_tpl" in f.detail and not f.ok for f in r2.findings))
     expect("ADR-04: String-Decoy-Guard wird ROT", any("_st_decoy" in f.detail and not f.ok for f in r4.findings))
     expect("ADR-04: Destrukturierung mit echtem Guard bleibt GRÜN", any("_st_ok" in f.detail and f.ok for f in r4.findings))
@@ -70,6 +90,14 @@ out = "\n".join(f.detail for f in gr.findings)
 expect("K31: Archiv-PII wird ROT", any(not f.ok for f in gr.findings))
 expect("K31: kein Klartext-Leak (Dateiname/IBAN maskiert)", (MAIL not in out) and (IBAN not in out))
 os.remove(z)
+
+# ADR-01 (M05-Bau): Reihenfolge der Policy-Statements zählt.
+from validators.checks.adr01_rls import analyze
+T = "CREATE TABLE t (id int, tenant_id uuid); ALTER TABLE t ENABLE ROW LEVEL SECURITY; ALTER TABLE t FORCE ROW LEVEL SECURITY; "
+expect("ADR-01: idempotentes DROP IF EXISTS + CREATE POLICY bleibt GRÜN",
+       analyze([T + "DROP POLICY IF EXISTS p ON t; CREATE POLICY p ON t USING (true);"])["t"] == [])
+expect("ADR-01: CREATE POLICY gefolgt von DROP POLICY wird ROT",
+       analyze([T + "CREATE POLICY p ON t USING (true); DROP POLICY p ON t;"])["t"] != [])
 
 # Mermaid: kaputt/leer wird abgelehnt.
 from validators.checks.k29_dossier import _mermaid_problem

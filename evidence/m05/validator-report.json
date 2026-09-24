@@ -1,0 +1,907 @@
+{
+  "generated_at": "2026-09-24T13:20:59.303913+00:00",
+  "stage": 0,
+  "live_db": true,
+  "require_live": true,
+  "checks": [
+    {
+      "adr": "ADR-09",
+      "name": "Merge: eindeutige Codes, ein Tabellen-Eigentümer",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "14 Bausteine, 24 Tabellen, keine Doppelung"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-09",
+      "name": "project.json-Fragmente ↔ JSON-Schema",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ADMIN: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-01: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-03: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-04: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-05: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-06: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-07: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-08: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-09: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-10: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-CORE-SYNC: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05: schema-valide"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ORG: schema-valide"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-01",
+      "name": "RLS FORCE + Policy je mandantenbezogener Tabelle",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "approval: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_anchor: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_log: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_approval_request: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_import_batch: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_settings: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "member: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_period: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_proposal: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_status_history: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_assignment: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_version: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "organisation: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "outbox: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "person: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "principal_link: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_assignment: ENABLE+FORCE+Policy"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "scope_node: ENABLE+FORCE+Policy"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-02",
+      "name": "Keine verbotenen Cross-Modul-Imports (inkl. dynamisch)",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-02",
+          "ok": true,
+          "skipped": false,
+          "detail": "3 Module, keine verbotenen Cross-Modul-Imports (statisch/dynamisch)"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-04",
+      "name": "Zentraler Policy-Prüfpunkt nicht umgangen",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-04",
+          "ok": true,
+          "skipped": false,
+          "detail": "apps/web/src/modules/mitglieder/mitglieder.action.ts: jede exportierte Aktion: checkPolicy() + Guard vor DB-Zugriff"
+        },
+        {
+          "rule": "ADR-04",
+          "ok": true,
+          "skipped": false,
+          "detail": "apps/web/src/modules/person/person.action.ts: jede exportierte Aktion: checkPolicy() + Guard vor DB-Zugriff"
+        },
+        {
+          "rule": "ADR-04",
+          "ok": true,
+          "skipped": false,
+          "detail": "apps/web/src/modules/rbac/rbac.action.ts: jede exportierte Aktion: checkPolicy() + Guard vor DB-Zugriff"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-09",
+      "name": "project.json ↔ reale Tabellen (Abgleich)",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "approval: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_anchor: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_log: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_approval_request: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_import_batch: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_settings: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "member: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_category: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_end_reason: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_period: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_proposal: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_status_history: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_assignment: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_version: deklariert in VV-M05"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "organisation: deklariert in VV-ORG"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "outbox: deklariert in VV-BASIS-03"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "person: deklariert in VV-BASIS-01"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "principal_link: deklariert in VV-BASIS-02"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_assignment: deklariert in VV-BASIS-02"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_permission: deklariert in VV-BASIS-02"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_type: deklariert in VV-BASIS-02"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "scope_node: deklariert in VV-BASIS-02"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "sod_rule: deklariert in VV-BASIS-02"
+        }
+      ]
+    },
+    {
+      "adr": "K29",
+      "name": "9-teiliges Bau-Dossier + Mermaid (status-bewusst)",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ADMIN: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-01: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02: 9 Abschnitte + Mermaid + Evidenz + Inhalt"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-03: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-04: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-05: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-06: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-07: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-08: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-09: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-10: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-CORE-SYNC: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05: 9 Abschnitte + Mermaid + Evidenz + Inhalt"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ORG: 9 Abschnitte + Mermaid + Evidenz (Skeleton)"
+        },
+        {
+          "rule": "K29",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-STAGE-0: vollständig + Mermaid + Evidenz"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-09",
+      "name": "Jedes Gate hat verlinkte Evidenz",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ADMIN Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ADMIN Gate 0: docs/bausteine/VV-ADMIN.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-01 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-01 Gate 0: docs/bausteine/VV-BASIS-01.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02 Gate 0: docs/bausteine/VV-BASIS-02.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02 Gate 1: evidence/m05/gate-m05-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02 Gate 1: evidence/m05/db-asserts.txt"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-02 Gate 1: docs/bausteine/VV-BASIS-02.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-03 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-03 Gate 0: docs/bausteine/VV-BASIS-03.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-04 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-04 Gate 0: docs/bausteine/VV-BASIS-04.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-05 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-05 Gate 0: docs/bausteine/VV-BASIS-05.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-06 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-06 Gate 0: docs/bausteine/VV-BASIS-06.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-07 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-07 Gate 0: docs/bausteine/VV-BASIS-07.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-08 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-08 Gate 0: docs/bausteine/VV-BASIS-08.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-09 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-09 Gate 0: docs/bausteine/VV-BASIS-09.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-10 Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-BASIS-10 Gate 0: docs/bausteine/VV-BASIS-10.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-CORE-SYNC Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-CORE-SYNC Gate 0: docs/bausteine/VV-CORE-SYNC.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: evidence/m05/gate-m05-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: evidence/m05/verification.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: evidence/m05/validator-report.json"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: evidence/m05/db-asserts.txt"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: evidence/m05/tests.txt"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-M05 Gate 1: docs/bausteine/VV-M05.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ORG Gate 0: evidence/stage-0/gate0-checklist.md"
+        },
+        {
+          "rule": "ADR-09",
+          "ok": true,
+          "skipped": false,
+          "detail": "VV-ORG Gate 0: docs/bausteine/VV-ORG.md"
+        }
+      ]
+    },
+    {
+      "adr": "K31",
+      "name": "Kein Personenbezug im Repo/CI (nur synthetisch)",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "K31",
+          "ok": true,
+          "skipped": false,
+          "detail": ".env.example: VV_DATA_MODE=synthetic"
+        },
+        {
+          "rule": "K31",
+          "ok": true,
+          "skipped": false,
+          "detail": "kein Personenbezug-Muster gefunden (alle Textdateien inkl. csv/json)"
+        }
+      ]
+    },
+    {
+      "adr": "ADR-01",
+      "name": "LIVE: RLS/Rollen effektiv (echte PostgreSQL)",
+      "status": "pass",
+      "passed": true,
+      "skipped": false,
+      "findings": [
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "vv_app: NOSUPERUSER + NOBYPASSRLS"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "approval: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_anchor: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "audit_log: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_approval_request: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_import_batch: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "m05_settings: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "member: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_period: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_proposal: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_status_history: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_assignment: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "membership_type_version: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "organisation: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "outbox: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "person: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "principal_link: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "role_assignment: force=True, policies=1"
+        },
+        {
+          "rule": "ADR-01",
+          "ok": true,
+          "skipped": false,
+          "detail": "scope_node: force=True, policies=1"
+        }
+      ]
+    }
+  ],
+  "static_passed": true,
+  "gate_passed": true,
+  "passed": true,
+  "total_failures": 0,
+  "total_skipped": 0
+}

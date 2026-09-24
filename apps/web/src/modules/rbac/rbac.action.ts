@@ -6,7 +6,7 @@ import { writeAudit } from "../../platform/audit.ts";
 import { pool } from "../../db.ts";
 
 export async function listRoleAssignments(ctx: { tenantId: string; actor: string; scopeNode: string }) {
-  const decision = checkPolicy({
+  const decision = await checkPolicy({
     tenantId: ctx.tenantId,
     actor: ctx.actor,
     resource: "role_assignment",

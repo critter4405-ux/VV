@@ -4,7 +4,8 @@
 // ein Freigabe-Objekt an (Vier-Augen, siehe agents/vier_augen.ts).
 import PgBoss from "pg-boss";
 import { writeFileSync } from "node:fs";
-import { claimOutbox, markOutboxDone, markOutboxFail } from "./db.ts";
+import { claimOutbox, markOutboxDone, markOutboxFail, pool } from "./db.ts";
+import { handleM05Outbox, runM05Daily } from "./jobs/m05.ts";
 
 function beat() {
   try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
@@ -15,8 +16,11 @@ async function pollOutbox() {
     const rows = await claimOutbox(10);
     for (const row of rows) {
       try {
-        // Stage-0: nur protokollieren (Zustellung/Agentenlogik folgt beim Modul-Bau).
-        console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
+        // M05: Ausführung eingelöster Vier-Augen-Freigaben (m05.execute). Andere Topics: protokollieren
+        // (Konsumenten wie BASIS-07/M06 folgen mit ihren Modulen).
+        if (!(await handleM05Outbox(row, pool))) {
+          console.log(`[vv-worker] outbox ${row.id} topic=${row.topic} tenant=${row.tenant_id}`);
+        }
         await markOutboxDone(row.id);
       } catch (jobErr) {
         // Poison-Pill-Schutz: Fehlversuch zählen, nach N in die DLQ (dead_at) statt Endlos-Reclaim.
@@ -39,6 +43,14 @@ async function main() {
   await boss.createQueue(QUEUE);
   await boss.work(QUEUE, async ([job]) => {
     console.log("[vv-worker] reminder job", job.id); // Trivial-Routine (stehende Klasse-Freigabe, B09-1)
+  });
+
+  // M05-Tagesjob (Stichtag, Sperre, Aging-up, Aufbewahrung) — 02:15 Europe/Vienna, idempotent.
+  const M05_DAILY = "m05.daily";
+  await boss.createQueue(M05_DAILY);
+  await boss.schedule(M05_DAILY, "15 2 * * *", {}, { tz: "Europe/Vienna" });
+  await boss.work(M05_DAILY, async () => {
+    console.log("[vv-worker] m05.daily", JSON.stringify(await runM05Daily(pool)));
   });
 
   beat();

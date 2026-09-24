@@ -22,6 +22,11 @@ export const EFFECTS = {
   "payment.execute":  { id: "payment.execute",  action: "payment.execute", dataClass: "F-Bank", binding: true  },
   "sepa.submit":      { id: "sepa.submit",      action: "sepa.submit",     dataClass: "F-Bank", binding: true  },
   "report.authority": { id: "report.authority", action: "report.authority",dataClass: "A9",     binding: true  },
+  // M05 „Mitglieder" (harte Grenzen): Ausführung NUR in der DB-Funktion m05_execute, die die
+  // Freigabe atomar mit der Wirkung einlöst (Consume + Effekt in EINER Transaktion).
+  "m05.membership.terminate": { id: "m05.membership.terminate", action: "deactivate", dataClass: "S", binding: true },
+  "m05.membership.anonymize": { id: "m05.membership.anonymize", action: "delete",     dataClass: "S", binding: true },
+  "q05.import.commit":        { id: "q05.import.commit",        action: "create",     dataClass: "S", binding: true },
   // --- nicht-bindend: nur ausdrücklich registrierte Routineklassen (stehende Klasse-Freigabe) ---
   "reminder.dispatch":     { id: "reminder.dispatch",     action: "reminder.dispatch", binding: false },
   "person.list":           { id: "person.list",           action: "read",              dataClass: "S", binding: false },

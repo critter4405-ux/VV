@@ -1,0 +1,44 @@
+{
+  "code": "VV-M05",
+  "name": "Mitglieder (Mitglieder-CRM)",
+  "kind": "module",
+  "version": "1.0",
+  "status": "in_bau",
+  "gate": 1,
+  "adr": ["ADR-01", "ADR-02", "ADR-04", "ADR-05", "ADR-06", "ADR-07", "ADR-09"],
+  "dossier": "docs/bausteine/VV-M05.md",
+  "tables": [
+    { "name": "membership_category", "tenant_scoped": false },
+    { "name": "membership_end_reason", "tenant_scoped": false },
+    { "name": "membership_type", "tenant_scoped": true },
+    { "name": "membership_type_version", "tenant_scoped": true },
+    { "name": "member", "tenant_scoped": true },
+    { "name": "membership_period", "tenant_scoped": true },
+    { "name": "membership_status_history", "tenant_scoped": true },
+    { "name": "membership_type_assignment", "tenant_scoped": true },
+    { "name": "membership_proposal", "tenant_scoped": true },
+    { "name": "m05_settings", "tenant_scoped": true },
+    { "name": "m05_approval_request", "tenant_scoped": true },
+    { "name": "m05_import_batch", "tenant_scoped": true }
+  ],
+  "gates": [
+    {
+      "id": 1,
+      "title": "M05 Phase 1 — Bau-Nachweise (Vier-Augen-Review + Betreiber-Freigabe ausstehend)",
+      "evidence": [
+        "evidence/m05/gate-m05-checklist.md",
+        "evidence/m05/verification.md",
+        "evidence/m05/validator-report.json",
+        "evidence/m05/db-asserts.txt",
+        "evidence/m05/tests.txt",
+        "docs/bausteine/VV-M05.md"
+      ]
+    }
+  ],
+  "register_refs": ["P50", "K31", "Q01", "Q05", "B01-1", "B02-1", "B04-3", "B07-1", "K04", "K27"],
+  "module": {
+    "name": "M05 Mitglieder",
+    "path": "apps/web/src/modules/mitglieder",
+    "allowed_cross_module_imports": []
+  }
+}

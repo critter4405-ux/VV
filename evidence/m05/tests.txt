@@ -1,0 +1,72 @@
+# M05 — Tests, Typecheck, Validatoren (Lauf: 2026-09-24 15:20 CEST)
+
+## Validatoren LIVE (VV_REQUIRE_LIVE=1, vv_app gegen echte PostgreSQL)
+[PASS] ADR-09  Merge: eindeutige Codes, ein Tabellen-Eigentümer  (1/1 ok)
+[PASS] ADR-09  project.json-Fragmente ↔ JSON-Schema  (14/14 ok)
+[PASS] ADR-01  RLS FORCE + Policy je mandantenbezogener Tabelle  (19/19 ok)
+[PASS] ADR-02  Keine verbotenen Cross-Modul-Imports (inkl. dynamisch)  (1/1 ok)
+[PASS] ADR-04  Zentraler Policy-Prüfpunkt nicht umgangen  (3/3 ok)
+[PASS] ADR-09  project.json ↔ reale Tabellen (Abgleich)  (24/24 ok)
+[PASS] K29     9-teiliges Bau-Dossier + Mermaid (status-bewusst)  (15/15 ok)
+[PASS] ADR-09  Jedes Gate hat verlinkte Evidenz  (35/35 ok)
+[PASS] K31     Kein Personenbezug im Repo/CI (nur synthetisch)  (2/2 ok)
+[PASS] ADR-01  LIVE: RLS/Rollen effektiv (echte PostgreSQL)  (20/20 ok)
+GATE 0 -> 1: GRÜN — alle ADR-Invarianten erfüllt (inkl. Live-DB).
+EXIT=0
+
+## Validator-Selbsttest
+Validator-Selbsttest: 12/12 Erwartungen erfüllt
+EXIT=0
+
+## Typecheck web
+EXIT=0
+
+## Typecheck worker
+EXIT=0
+
+## Tests web (Unit + API-Integration gegen DB)
+ok 1 - M05-API end-to-end (echte DB)
+ok 2 - UUID: gültig/ungültig
+ok 3 - Datum: echtes Kalenderdatum, kein 30. Februar, kein Freitext
+ok 4 - Kündigung: Enum-Beendigungsart, Katalog-Codes statt Freitext
+ok 5 - Entscheidung nur approved/rejected
+ok 6 - Freigeber kann NICHT über den Body gesetzt werden (Feld wird ignoriert)
+ok 7 - Mitgliedsart: Aging-up nur mit Folgeart; Codes/Namen streng
+ok 8 - Aufbewahrung nie unter 7 Jahre (P50-9)
+ok 9 - Export: Zweckangabe Pflicht, ohne Steuerzeichen
+ok 10 - Import-Antrag: SHA-256 + Batch-Referenz strikt
+ok 11 - Body muss ein Objekt sein
+ok 12 - ohne Tenant/Actor/Scope: deny ohne DB-Zugriff
+ok 13 - Systemakteur und unbekannte Ressource: deny
+ok 14 - DB entscheidet: erlaubt -> allowed, in Transaktion mit Tenant + Actor
+ok 15 - DB verweigert -> deny + Audit-Eintrag
+ok 16 - DB-Fehler -> fail-closed
+ok 17 - approve ist bindend (requiresApproval)
+# tests 17
+# pass 17
+# fail 0
+# skipped 0
+EXIT=0
+
+## Tests worker (Vier-Augen-Adversarial, Executor, Outbox→Worker→Wirkung)
+ok 1 - bindender Effekt ist server-seitig klassifiziert (Registry, nicht Aufrufer)
+ok 2 - ADVERSARIAL a) Umetikettieren erreicht die Zahlungs-Senke NICHT
+ok 3 - ADVERSARIAL b) erfundene Freigabe ohne echten DB-Eintrag wird abgewiesen
+ok 4 - ADVERSARIAL b2) Reviewer aus gleicher Modellfamilie zählt nicht
+ok 5 - ADVERSARIAL c) Token/Freigabe ist genau EINMAL einlösbar (Replay ROT)
+ok 6 - abgelaufene Freigabe wird abgewiesen
+ok 7 - unbekannter Effekt: fail-closed; nicht-bindend nur wenn registriert
+ok 8 - Freigabe wird über Outbox + Worker genau einmal ausgeführt
+ok 9 - fremde Topics werden nicht angefasst
+ok 10 - ungültige approval_id / Tenant -> fail-closed, kein DB-Zugriff
+ok 11 - Ausführung in Transaktion mit Tenant-Kontext; Fehler -> ROLLBACK + Wurf (Retry/DLQ)
+ok 12 - Tagesjob läuft je Mandant
+# tests 12
+# pass 12
+# fail 0
+# skipped 0
+EXIT=0
+
+## npm audit (Produktion, high/critical)
+found 0 vulnerabilities
+found 0 vulnerabilities

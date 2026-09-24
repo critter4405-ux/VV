@@ -92,7 +92,8 @@ def main() -> int:
     report["passed"] = report["gate_passed"]
     report["total_failures"] = total_fail
     report["total_skipped"] = total_skip
-    ev_dir = REPO / "evidence" / "stage-0"; ev_dir.mkdir(parents=True, exist_ok=True)
+    # Report-Ziel je Gate (M05-Bau): Default Stage 0; VV_REPORT_DIR=evidence/m05 für das Modul-Gate.
+    ev_dir = REPO / os.environ.get("VV_REPORT_DIR", "evidence/stage-0"); ev_dir.mkdir(parents=True, exist_ok=True)
     _atomic_write(ev_dir / "validator-report.json", json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 
     print("-" * 74)
@@ -103,7 +104,7 @@ def main() -> int:
               "(Live-DB); im Gate via VV_REQUIRE_LIVE erzwungen.")
     else:
         print(f"GATE 0 -> 1: ROT — {total_fail} Verstoß/Verstöße. Gate gesperrt.")
-    print("Report: evidence/stage-0/validator-report.json")
+    print(f"Report: {ev_dir.relative_to(REPO)}/validator-report.json")
     return 0 if total_fail == 0 else 1
 
 
