@@ -16,7 +16,7 @@
 ## Reproduzierbarer Live-Lauf (Pflicht, unabhängig)
 
 - **Codex (Docker, am besten in WSL):** aus dem Repo-Root `bash scripts/review_m05.sh`. Das Skript arbeitet read-only auf einer Temp-Kopie, startet eine frische PostgreSQL 16, spielt Migrationen + Seeds ein und führt Validatoren (LIVE), Selbsttest, DB-Gegenproben (Stage 0 + M05), Typechecks und Tests aus. Es liefert je Probe PASS/FAIL, das Urteil ziehst du.
-- **Gemini (statisch):** Die Quelltexte liegen als nummerierte Bundle-Dateien bei (`VV_M05_Review_Teil1..3.md`). Bitte bestätige zuerst, dass jedes Bundle bis zur Endmarke `=== ENDE TEIL n ===` vollständig angekommen ist. Ohne vollständigen Upload ist kein Befund zu „fehlenden/abgeschnittenen" Dateien zulässig.
+- **Gemini (statisch):** Die Quelltexte liegen als nummerierte Bundle-Dateien bei (`VV_M05_Review_Teil1.md` … `Teil7.md`). Bitte bestätige zuerst, dass jedes Bundle bis zur Endmarke `=== ENDE TEIL n ===` vollständig angekommen ist. Ohne vollständigen Upload ist kein Befund zu „fehlenden/abgeschnittenen" Dateien zulässig.
 
 ## Prüfpunkte (mindestens)
 
