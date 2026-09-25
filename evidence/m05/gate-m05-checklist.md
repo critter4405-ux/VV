@@ -16,5 +16,6 @@
 | 10 | Nur synthetische Daten (K31-Guard grün) | erfüllt | [validator-report.json](validator-report.json) (K31) · Seeds `db/seed/*` |
 | 11 | Reparaturrunde 1 (R1–R8, G-1–G-3): je Fix gate-blockierende Gegenprobe, echte PG16 | erfüllt | [verification.md](verification.md) §Reparaturrunde 1 · M05 133/133, Stage-0 33/33 (Stand Runde 1) |
 | 12 | Review Runde 2 (Codex GPT-6 Sol + Gemini): Befunde eingestuft, echte behoben, je Fix Gegenprobe (grün neu / rot alt) | erfüllt | [review-r2/einstufung.md](review-r2/einstufung.md) · M05 137/137, Stage-0 37/37 in [db-asserts.txt](db-asserts.txt) |
+| 13 | Bestätigungs-Review Runde 3 (Codex GPT-6 Sol, Live-Lauf in Docker): Urteil „bestanden", keine neuen Befunde, R2-Fixes live bestätigt | erfüllt | [review-r3/einstufung.md](review-r3/einstufung.md) · [Bericht](review-r3/REVIEW-M05-Codex-R3.md) |
 
-**Offen (nicht Bau-KI):** Bestätigungs-Review über den Stand nach Reparaturrunde 2 (Codex GPT-6 Sol, Live-Lauf) · Betreiber-Freigabe M05-Gate (Phase D). GitHub-Ruleset (R6) bei Remote-Anlage.
+**Offen (nicht Bau-KI):** — Bestätigungs-Review erledigt (#13) · Betreiber-Freigabe M05-Gate (Phase D). GitHub-Ruleset (R6) bei Remote-Anlage.

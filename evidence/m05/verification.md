@@ -71,6 +71,10 @@ Codex GPT-6 Sol (nicht bestanden) + Gemini 3.1 Pro (bestanden) auf `2ff76e1`; Be
 
 **C-1** (App-Zugangsdaten setzen Mandant/Actor frei) = dokumentierte Design-Grenze, Betreiber-Entscheidung; Stage-1-Pflicht vor S3 (Kontext-Signatur). **H-1b** (Reviewer-Freitext) = Stage-1 mit BASIS-09.
 
+## Review Runde 3 (Bestätigung) — konvergiert
+
+Codex **GPT-6 Sol** auf `d3f3027`, erstmals mit eigenem Live-Lauf (PostgreSQL 16.15 in Docker/WSL): **„bestanden", keine neuen Befunde**; H-1, H-2, M-1, M-2, N-1 einzeln live reproduziert und behoben. Harness-FAILs 3/16 = Umgebung (Debian-Paketindex 404 im Python-Image), unabhängige Nachläufe grün (M05 137/137, Validatoren LIVE, Web/Worker 18/18). Details: [review-r3/einstufung.md](review-r3/einstufung.md).
+
 ## Bewusst offen (dokumentiert, nicht Teil von M05 Phase 1)
 
 - **C-1 Vertrauensgrenze `vv_app`** (Review R2): Die DB schützt gegen App-Logikfehler, nicht gegen vollständig kompromittierte App-Zugangsdaten. Stage-1-Pflicht vor S3: Kontext-Signatur.
