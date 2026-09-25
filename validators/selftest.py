@@ -135,6 +135,22 @@ for _wf in (".github/workflows/ci.yml", ".github/workflows/codeql.yml"):
     _b = _push_branches(_wf)
     expect(f"R6: {_wf} push-Trigger deckt realen Hauptbranch ({', '.join(sorted(_mains))})", _mains.issubset(set(_b)))
 
+# P57: pgboss.*-Tabellen nur über die generierte Migration; anderswo = ROT (kein Schlupfloch).
+import validators.checks.project_recon as _pr
+_probe = REPO_MIG = os.path.join("db", "migrations", "9999_selftest_probe.sql")
+try:
+    with open(_probe, "w", encoding="utf-8") as _fh:
+        _fh.write("CREATE TABLE pgboss.schmuggel (id int);\n")
+    _r = _pr.run()
+    expect("P57: pgboss-Tabelle außerhalb der generierten Migration wird ROT",
+           any(not f.ok and "9999_selftest_probe.sql" in f.detail for f in _r.findings))
+finally:
+    try: os.remove(_probe)
+    except OSError: pass
+_r2 = _pr.run()
+expect("P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)",
+       all(f.ok for f in _r2.findings if "pgboss" in f.detail))
+
 fails = [n for n, ok in R if not ok]
 print("-" * 60)
 print(f"Validator-Selbsttest: {sum(1 for _,ok in R if ok)}/{len(R)} Erwartungen erfüllt"
