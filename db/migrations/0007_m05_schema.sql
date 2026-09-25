@@ -262,11 +262,19 @@ CREATE POLICY m05_settings_tenant_isolation ON m05_settings
     USING (tenant_id = vv_current_tenant())
     WITH CHECK (tenant_id = vv_current_tenant());
 
+-- Review R2 (Codex N-1): Freigabe-Referenzen mandantendicht (ADR-01-Konvention zusammengesetzter FKs).
+-- `approval` (Stage 0) bekommt dafür einen Schlüssel (tenant_id, id); id bleibt global eindeutig.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'approval_tenant_id_uk') THEN
+    ALTER TABLE approval ADD CONSTRAINT approval_tenant_id_uk UNIQUE (tenant_id, id);
+  END IF;
+END $$;
+
 -- Bindung jeder M05-Freigabe an ihren geprüften Antrag: nur Anträge, die über m05_request_*
 -- entstanden sind (requested_by = app.actor, Parameter-Hash, Perioden-Version), sind ausführbar.
 -- Schützt gegen direkt eingefügte approval-Zeilen mit fremdem requested_by (Stage-0-Residuum).
 CREATE TABLE IF NOT EXISTS m05_approval_request (
-    approval_id     uuid PRIMARY KEY REFERENCES approval(id),
+    approval_id     uuid PRIMARY KEY,
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
     period_id       uuid NOT NULL,
     effect_id       text NOT NULL CHECK (effect_id IN ('m05.membership.terminate','m05.membership.anonymize')),
@@ -278,6 +286,7 @@ CREATE TABLE IF NOT EXISTS m05_approval_request (
     closed_at       timestamptz,
     outcome         text CHECK (outcome IN ('executed','rejected','expired','stale')),
     CONSTRAINT mar_period_fk FOREIGN KEY (tenant_id, period_id) REFERENCES membership_period (tenant_id, id),
+    CONSTRAINT mar_approval_fk FOREIGN KEY (tenant_id, approval_id) REFERENCES approval (tenant_id, id),
     CONSTRAINT mar_closed_ck CHECK ((closed_at IS NULL) = (outcome IS NULL))
 );
 -- Höchstens EIN offener Antrag je Periode × Effekt (kein Parallel-Antrag, kein Payload-Tausch).
@@ -295,14 +304,15 @@ CREATE POLICY m05_approval_request_tenant_isolation ON m05_approval_request
 CREATE TABLE IF NOT EXISTS m05_import_batch (
     tenant_id     uuid NOT NULL REFERENCES tenant(id),
     batch_ref     text NOT NULL CHECK (batch_ref ~ '^[A-Za-z0-9._-]{3,64}$'),
-    approval_id   uuid NOT NULL REFERENCES approval(id),
+    approval_id   uuid NOT NULL,
     requested_by  text NOT NULL,
     rows_sha256   text NOT NULL CHECK (rows_sha256 ~ '^[0-9a-f]{64}$'),
     row_count     integer NOT NULL CHECK (row_count BETWEEN 1 AND 20000),
     created_at    timestamptz NOT NULL DEFAULT now(),
     applied_at    timestamptz,
     report        jsonb,
-    PRIMARY KEY (tenant_id, batch_ref)
+    PRIMARY KEY (tenant_id, batch_ref),
+    CONSTRAINT mib_approval_fk FOREIGN KEY (tenant_id, approval_id) REFERENCES approval (tenant_id, id)
 );
 ALTER TABLE m05_import_batch ENABLE ROW LEVEL SECURITY;
 ALTER TABLE m05_import_batch FORCE ROW LEVEL SECURITY;

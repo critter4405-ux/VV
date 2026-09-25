@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import uuid
 from pathlib import Path
 
@@ -290,8 +291,8 @@ def main() -> int:
         (orig, appr_f))
 
     # Gefälschte Freigabe direkt eingefügt (S0-1/S0-2) + nicht über m05_request_* entstanden
-    forged = one(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,status,approved_by,decided_at) "
-                      "VALUES (%s,'legal','m05.membership.terminate',%s,%s,'approved','sub-vorstand-aa',now()) RETURNING id",
+    forged = one(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,builder_model,status,approved_by,decided_at) "
+                      "VALUES (%s,'legal','m05.membership.terminate',%s,%s,'human:manuell','approved','sub-vorstand-aa',now()) RETURNING id",
                  (AA, per_jonas, SCHRIFT), actor=SCHRIFT)
     st = one(BOOT, "SELECT status||'/'||coalesce(approved_by,'-') FROM approval WHERE id=%s", (forged,))
     check("S0-1: direkt eingefügte Freigabe startet immer als pending (kein Fälschen von 'approved')", st == "pending/-", st)
@@ -620,6 +621,55 @@ def main() -> int:
     ru2 = one(BOOT, "SELECT retention_until > m05_today() FROM membership_period WHERE id=%s", (per_h2,))
     check("G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag",
           j_h2.get("retention_hold", 0) >= 1 and n_req2 == 1 and ru2 is True, f"{j_h2} Anträge={n_req2}")
+
+    # ---------------------------------------------------------------- Review R2 (Codex M-1): Legal Hold -> Outbox
+    ev_hold = [one(BOOT, "SELECT count(*) FROM outbox WHERE topic='m05.retention.hold' AND payload->>'period_id'=%s", (pp,))
+               for pp in (per_h1, per_h2)]
+    ev_pii = one(BOOT, "SELECT count(*) FROM outbox WHERE topic='m05.retention.hold' AND payload::text ~ %s",
+                 (f"[A-Za-z]+{RUN}",))
+    check("R2/M-1: Legal Hold erzeugt genau EIN Outbox-Ereignis (auch bei direkter Ablehnung), ohne Personenbezug",
+          ev_hold == [1, 1] and ev_pii == 0, f"{ev_hold} pii={ev_pii}")
+
+    # ---------------------------------------------------------------- Review R2 (Codex M-2): Tagesjob parallelfest
+    per_p = apply_admit(new_person("Parallel", "1950-01-01"), f"P{RUN}par", t_unt)
+    ap_p = one(APP, "SELECT m05_request_termination(%s,'verstorben',NULL,NULL,NULL,NULL,m05_today(),%s)",
+               (per_p, version(per_p)), actor=SCHRIFT)
+    run(APP, "SELECT m05_decide(%s,'approved')", (ap_p,), actor=VORSTAND)
+    execute(ap_p)
+    one(WK, "SELECT m05_job_daily()")                                  # beendet -> gesperrt
+    backdate(per_p, retention_until=today)                             # fällig, noch KEIN Antrag
+    wa = psycopg.connect(host=HOST, dbname="vv", user="vv_worker", password=PW)   # Lauf A: offene Transaktion
+    ca = wa.cursor()
+    ca.execute("SELECT set_config('app.tenant_id', %s, true)", (AA,))
+    ca.execute("SELECT m05_job_daily()")
+    ja = ca.fetchone()[0]
+    timer = threading.Timer(3.0, wa.commit)                            # A hält Sperren noch ~3 s
+    timer.start()
+    jb, eb = None, ""
+    try:
+        jb = one(WK, "SELECT m05_job_daily()", extra={"statement_timeout": "20s"})   # Lauf B parallel
+    except psycopg.Error as e:  # noqa: PERF203
+        eb = str(e).split("\n")[0]
+    timer.join()
+    wa.close()
+    jc = one(WK, "SELECT m05_job_daily()")                             # dritter Lauf nach Commit
+    n_par = one(BOOT, "SELECT count(*) FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize'",
+                (per_p,))
+    check("R2/M-2: zwei parallele Tagesläufe enden beide fehlerfrei, genau EIN Anonymisierungs-Antrag",
+          eb == "" and ja.get("anonymize_requested", 0) >= 1 and n_par == 1 and jc.get("anonymize_requested", 0) == 0,
+          f"A={ja} B={jb} err={eb!r} C={jc} n={n_par}")
+
+    # ---------------------------------------------------------------- Review R2 (Codex N-1): FKs mandantendicht
+    e = err(lambda: run(BOOT, """
+        WITH a AS (INSERT INTO approval (tenant_id, kind, effect_id, subject_ref, requested_by, builder_model)
+                   VALUES (%s, 'external_pii', 'q05.import.commit', %s, 'synthetic', 'human:synthetic') RETURNING id)
+        INSERT INTO m05_import_batch (tenant_id, batch_ref, approval_id, requested_by, rows_sha256, row_count)
+        SELECT %s, %s, id, 'synthetic', repeat('a', 64), 1 FROM a""", (BB, f"FK{RUN}", AA, f"FK{RUN}"), tenant=None))
+    check("R2/N-1: Import-Batch kann keine Freigabe eines fremden Mandanten referenzieren (auch als Eigentümer)",
+          "mib_approval_fk" in e or "foreign key" in e.lower(), e)
+    fks = one(BOOT, "SELECT count(*) FROM pg_constraint WHERE conname IN ('mar_approval_fk','mib_approval_fk') "
+                    "AND array_length(conkey, 1) = 2", tenant=None)
+    check("R2/N-1: beide Freigabe-Fremdschlüssel sind zusammengesetzt (tenant_id, approval_id)", fks == 2, str(fks))
 
     # ---------------------------------------------------------------- R4/R7 im M05-Kontext
     ap_r4 = one(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),NULL,NULL,NULL,NULL,%s)",

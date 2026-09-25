@@ -29,6 +29,10 @@
     {
       "name": "approval_effect_permission",
       "tenant_scoped": false
+    },
+    {
+      "name": "outbox_consumer",
+      "tenant_scoped": false
     }
   ],
   "gates": [

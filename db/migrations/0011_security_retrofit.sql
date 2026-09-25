@@ -57,20 +57,22 @@ LANGUAGE sql IMMUTABLE AS $$
     WHEN lower(p) ~ '(gemini|google|bard|palm)'                     THEN 'google'
     WHEN lower(p) ~ '(mistral|mixtral|codestral)'                   THEN 'mistral'
     WHEN lower(p) ~ '(llama|meta)'                                  THEN 'meta'
-    ELSE nullif(regexp_replace(lower(p), '[^a-z].*$', ''), '')
+    ELSE NULL        -- Review R2 (Codex H-1): unbekannte Kennung = KEINE Familie (kein Buchstaben-Fallback)
   END
 $$;
 
 -- Menschliche/System-Anträge: die zweite PERSON ist das Vier-Augen-Element (keine Modell-Attestation).
--- Modell-Vorschlag (inkl. leerem/unbekanntem builder_model = deny-by-default): Reviewer einer
--- bekannten, ANDEREN Modellfamilie Pflicht.
+-- Modell-Vorschlag: Builder UND Reviewer müssen einer BEKANNTEN Modellfamilie angehören und
+-- verschieden sein. Leerer/unbekannter Builder = nicht freigebbar (deny-by-default; Review R2, Codex
+-- H-1: vorher galt „unbekannt ≠ openai" als verschieden). Der Anlass muss dann als human:*/system:*
+-- oder mit korrekter Modellkennung neu beantragt werden.
 CREATE OR REPLACE FUNCTION vv_attestation_ok(p_builder text, p_reviewer text) RETURNS boolean
 LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE
     WHEN vv_model_family(p_builder) IN ('human', 'system') THEN true
-    ELSE vv_model_family(p_reviewer) IS NOT NULL
-         AND vv_model_family(p_reviewer) NOT IN ('human', 'system')
-         AND vv_model_family(p_reviewer) IS DISTINCT FROM vv_model_family(p_builder)
+    ELSE coalesce(vv_model_family(p_builder)  IN ('anthropic', 'openai', 'google', 'mistral', 'meta'), false)
+     AND coalesce(vv_model_family(p_reviewer) IN ('anthropic', 'openai', 'google', 'mistral', 'meta'), false)
+     AND vv_model_family(p_reviewer) <> vv_model_family(p_builder)
   END
 $$;
 GRANT EXECUTE ON FUNCTION vv_model_family(text), vv_attestation_ok(text, text) TO vv_app, vv_worker, vv_definer;
@@ -199,6 +201,20 @@ DROP FUNCTION IF EXISTS vv_outbox_fail(uuid, text, int);
 
 -- Claim NUR für die Topics, die der aufrufende Worker tatsächlich konsumiert (p_topics Pflicht).
 -- Alle anderen Events bleiben unberührt geparkt (attempts=0, kein DLQ) — nichts wird „weg-quittiert".
+-- Review R2 (Codex H-2): Consumer-Register IN DER DB. Geclaimt wird nur, was hier registriert ist —
+-- unabhängig von der Topic-Liste des Aufrufers (ein fehlkonfigurierter/kompromittierter Worker kann
+-- fremde Ereignisse nicht claimen und quittieren). Pflege nur per Migration (keine Rechte für App/Worker).
+CREATE TABLE IF NOT EXISTS outbox_consumer (
+    topic       text PRIMARY KEY CHECK (topic ~ '^[a-z0-9][a-z0-9._]{0,80}$'),
+    consumer    text NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+REVOKE ALL ON outbox_consumer FROM PUBLIC, vv_app, vv_worker;
+INSERT INTO outbox_consumer (topic, consumer) VALUES
+  ('m05.execute',         'worker:m05'),
+  ('m05.import.approved', 'worker:m05')
+ON CONFLICT (topic) DO NOTHING;
+
 CREATE OR REPLACE FUNCTION vv_outbox_claim(max_rows int, p_topics text[])
 RETURNS SETOF outbox LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
@@ -209,7 +225,7 @@ BEGIN
   UPDATE outbox SET dead_at = now(), last_error = coalesce(last_error, 'max attempts (hard crash reaper)')
     WHERE id IN (
       SELECT id FROM outbox
-      WHERE topic = ANY (p_topics)
+      WHERE topic = ANY (p_topics) AND topic IN (SELECT c.topic FROM outbox_consumer c)
         AND processed_at IS NULL AND dead_at IS NULL AND attempts >= 5
         AND (locked_until IS NULL OR locked_until < now())
       FOR UPDATE SKIP LOCKED
@@ -220,7 +236,7 @@ BEGIN
                       lease_token = gen_random_uuid()
     WHERE id IN (
       SELECT id FROM outbox
-      WHERE topic = ANY (p_topics)
+      WHERE topic = ANY (p_topics) AND topic IN (SELECT c.topic FROM outbox_consumer c)
         AND processed_at IS NULL AND dead_at IS NULL AND attempts < 5
         AND (locked_until IS NULL OR locked_until < now())
       ORDER BY created_at

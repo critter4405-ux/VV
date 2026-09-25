@@ -1,13 +1,13 @@
 # Bau-Dossier — VV-M05 · Mitglieder (Mitglieder-CRM)
 
 > **Bau-Dossier (K29).** Phase 1, gebaut zur geschärften Spec (Baubuch v0.20, Steckbrief VV-M05; Register P50).
-> **Status: in_bau — Reparaturrunde 1 (R1–R8 + Gemini G-1–G-3) umgesetzt; formales Vier-Augen-Review (Codex-Modell nach Kalibrierung durch den Betreiber) und Betreiber-Freigabe ausstehend.** Die Bau-KI öffnet kein Gate.
+> **Status: in_bau — Reparaturrunde 1 (R1–R8, G-1–G-3) und Review Runde 2 (Codex GPT-6 Sol + Gemini 3.1 Pro) mit Reparaturrunde 2 umgesetzt; Bestätigungs-Review und Betreiber-Freigabe ausstehend.** Die Bau-KI öffnet kein Gate.
 
 ## 1. Kopf
 
 - **Code:** VV-M05 (+ BASIS-02-Kern, P50-8)
 - **Name:** Mitglieder (Mitglieder-CRM)
-- **Version:** 1.1 (Phase 1 + Reparaturrunde 1)
+- **Version:** 1.2 (Phase 1 + Reparaturrunden 1 und 2)
 - **Datum:** 24.09.2026
 - **Verantwortlich:** Bau-KI Claude Code + Opus 5.5 (Stufe hoch) · Prüf-KI GPT-5.x Codex + Gemini 3.x Pro (ausstehend) · Freigabe Betreiber
 - **Status/Gate:** in_bau · Gate 1 (M05) **gesperrt bis Review + Betreiber-Freigabe**
@@ -52,7 +52,7 @@ Die **fachliche Mitgliedschaft** auf Basis der Person (BASIS-01): wer ist auf we
 
 ## 5. Wie getestet
 
-- **Gegenproben gegen echte PostgreSQL 16 (adversarial):** [scripts/m05_db_asserts.py](../../scripts/m05_db_asserts.py) — **133/133**; aufgerufen aus [ci_db_asserts.sh](../../scripts/ci_db_asserts.sh) (Stage-0-Proben **33/33** inkl. S0-1/S0-2 und der Retrofit-Proben R1/R3/R4/R5/R8) — Nachweis: [evidence/m05/db-asserts.txt](../../evidence/m05/db-asserts.txt).
+- **Gegenproben gegen echte PostgreSQL 16 (adversarial):** [scripts/m05_db_asserts.py](../../scripts/m05_db_asserts.py) — **137/137**; aufgerufen aus [ci_db_asserts.sh](../../scripts/ci_db_asserts.sh) (Stage-0-Proben **37/37** inkl. S0-1/S0-2, Retrofit-Proben R1/R3/R4/R5/R8 und Review-R2-Proben) — Nachweis: [evidence/m05/db-asserts.txt](../../evidence/m05/db-asserts.txt).
 - **Validatoren LIVE (gate-blockierend):** [evidence/m05/validator-report.json](../../evidence/m05/validator-report.json); **Selbsttest** 14/14 (inkl. Umgehungsproben und R6-Trigger-Probe).
 - **Unit- + Integrationstests:** Web 18/18 (Policy-Prüfpunkt inkl. Scope-Semantik R7, Validierung, API end-to-end gegen DB), Worker 18/18 (Vier-Augen-Adversarial inkl. R2/R3, Executor, Import-Andockung G-1, Topic-Filter R5, Outbox → Worker → Wirkung genau einmal) — [evidence/m05/tests.txt](../../evidence/m05/tests.txt).
 - **Gesamtnachweis + Akzeptanzkriterien AK-01…AK-12:** [evidence/m05/verification.md](../../evidence/m05/verification.md) · Checkliste DoD: [evidence/m05/gate-m05-checklist.md](../../evidence/m05/gate-m05-checklist.md).
@@ -86,6 +86,21 @@ Befunde aus dem GPT-Lauf (Repair-Auftrag R1–R8) und aus Gemini 3.1 Pro (G-1–
 | G-1 | Freigegebener Import wurde nie ausgeführt | `m05_import_decide` emittiert `m05.import.approved`; Worker-Handler ruft `m05_import_apply`; ohne Q05-Zeilenquelle kontrolliert Retry → DLQ (nie stilles Quittieren) | m05_db_asserts G-1 · m05.test |
 | G-2 | Savepoint je Importzeile (`EXCEPTION`-Block) | Validierung per `pg_input_is_valid` + Prüfungen, Konflikt-Codes statt Ausnahmen; unerwartete Fehler brechen den Batch ab | m05_db_asserts G-2 (3.005 Zeilen, 1 Tx, < 60 s) |
 | G-3 | Abgelehnte Anonymisierung → täglich neuer Antrag | Legal Hold: `retention_until` + `hold_extension_months` (Default 12, 1–60), auditiert `m05.retention.hold`; auch bei direkter Ablehnung (Tagesjob) | m05_db_asserts G-3 (3) |
+
+### 6b. Review Runde 2 + Reparaturrunde 2 (Register P54)
+
+Prüfer: **Codex GPT-6 Sol** (kalibriert, P53) „nicht bestanden" · **Gemini 3.1 Pro** „bestanden" (2× NIEDRIG, bekannt). Befunde am Code/live verifiziert, eingestuft, in **einer** Runde behoben; je Fix gate-blockierende Gegenprobe — **grün auf dem reparierten Stand, rot gegen den alten** (Negativ-Nachweis). Details: [Einstufung](../../evidence/m05/review-r2/einstufung.md).
+
+| ID | Befund | Einstufung | Maßnahme | Gegenprobe |
+|---|---|---|---|---|
+| C-1 | Mit den DB-Zugangsdaten der Web-App lassen sich Mandant/Actor frei setzen (Antragsteller + Freigeber in einer Verbindung) | **Design-Grenze** (ADR-01/04), über HTTP nicht ausnutzbar | **Restrisiko dokumentiert (Betreiber)**; Stage-1-Pflicht **vor S3**: Kontext-Signatur (Auth-Dienst, HMAC-Prüfung in der DB) | — |
+| H-1 | Leerer/unbekannter Builder galt als „andere Familie" | echt | nur bekannte Modellfamilien (Kanon), unbekannt/leer → nicht freigebbar | ci_db_asserts R2/H-1 (2) · vier_augen.test |
+| H-1b | Reviewer-Kennung = Freitext | Design/Stage-1 | Artefakt-Bindung mit Prüf-Agent (BASIS-09) | — |
+| H-2 | Worker konnte per SQL beliebige Topics claimen | echt | **Consumer-Register `outbox_consumer`** in der DB; Claim nur für registrierte Topics; Pflege nur per Migration | ci_db_asserts R2/H-2 (2) |
+| M-1 | Legal Hold ohne Outbox-Ereignis | echt | Ereignis `m05.retention.hold` (nur IDs/Datum) in derselben Transaktion | m05_db_asserts R2/M-1 |
+| M-2 | Tagesjob nicht parallelfest (zweiter Lauf brach ab) | echt | `FOR UPDATE SKIP LOCKED` + Nachprüfung unter Sperre; Legal Hold idempotent | m05_db_asserts R2/M-2 (echter Parallel-Lauf) |
+| N-1 | Freigabe-FKs nicht mandantendicht | echt | `approval` `UNIQUE(tenant_id,id)` + zusammengesetzte FKs | m05_db_asserts R2/N-1 (2) |
+| Umg. | R6-Selbsttest hing an `origin/HEAD` | echt (NIEDRIG) | feste Hauptbranch-Menge `master`/`main` | selftest R6 |
 
 **Nicht in dieser Runde (Stage-1-Backlog, dokumentiert):** Validator-Umgehungen H-04/H-08–H-12, M-01/M-02 (Umstellung auf TS-AST + `pg_catalog`-Abgleich, Testfälle aus dem GPT-Bericht als Regressionen) · H-13 (Compose-Health/OIDC-Smoke) · M-03 (Live-Report-Upload) · B-01 (Design) · B-04/H-01 (Gateway-Heuristik, Residuum bis Agenten-Bau) · direkte `vv_app`-SELECT-Rechte auf `person`/`role_assignment` (Stage-0-Demo-Pfad).
 
@@ -122,5 +137,6 @@ Der Verein weiß jederzeit, wer seit wann in welcher Art Mitglied ist — mit l�
 
 ## 9. Änderungshistorie
 
+- 25.09.2026 — v1.2: **Review Runde 2 + Reparaturrunde 2** (Register P53/P54): Codex GPT-6 Sol + Gemini 3.1 Pro; H-1, H-2, M-1, M-2, N-1, R6-Probe behoben (8 neue Gegenproben, rot gegen alten Stand); C-1 als Design-Grenze/Restrisiko (Betreiber), Stage-1-Pflicht vor S3. M05 137/137, Stage-0 37/37. **Bestätigungs-Review + Freigabe ausstehend.**
 - 24.09.2026 — v1.1: **Reparaturrunde 1 / Sicherheits-Retrofit** (Register P52, Bezug P48/P49): R1–R8 aus dem Repair-Auftrag + Gemini G-1–G-3 verifiziert, eingestuft und behoben (Migration 0011, Worker/Web/Validator-Selbsttest); Stage-0-Kern (Audit, Freigabe, Outbox, CI-Trigger) nachgehärtet, durch die M05-Freigabe gedeckt. Gegenproben M05 133/133, Stage-0 33/33, Selbsttest 14/14. **Formales Vier-Augen-Review (Codex-Modell nach Kalibrierung) + Freigabe ausstehend.**
 - 24.09.2026 — v1.0: M05 Phase 1 gebaut; Selbstcheck vor Review: S0-3 (Outbox-Spoofing), M-1 (Se im Freigabe-Objekt), M-2 (gesperrt in Detailansicht) geschlossen (Bau-KI Opus 5.5) nach Grill P50 (13 Entscheidungen); BASIS-02-Kern mitgebaut; Stage-0-Befunde S0-1/S0-2 geschlossen; Validator-Härtung ADR-01 (Statement-Reihenfolge) + ADR-04 (je Aktion, Fachbefehle); Vereinsplaner-Mapping v1. **Review + Freigabe ausstehend.**

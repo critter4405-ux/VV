@@ -45,13 +45,16 @@ function family(m: string | null): string | null {
   if (/(claude|anthropic|opus|sonnet|haiku)/.test(x)) return "anthropic";
   if (/(gpt|openai|codex|^o[0-9])/.test(x)) return "openai";
   if (/(gemini|google)/.test(x)) return "google";
-  return x.replace(/[^a-z].*$/, "");
+  if (/(mistral|mixtral|codestral)/.test(x)) return "mistral";
+  if (/(llama|meta)/.test(x)) return "meta";
+  return null;                                   // Review R2 (H-1): unbekannt = keine Familie
 }
+const KNOWN = new Set(["anthropic", "openai", "google", "mistral", "meta"]);
 function attestationOk(builder: string, reviewer: string | null): boolean {
   const fb = family(builder);
   if (fb === "human" || fb === "system") return true;
   const fr = family(reviewer);
-  return !!fr && fr !== "human" && fr !== "system" && fr !== (fb ?? "");
+  return !!fb && !!fr && KNOWN.has(fb) && KNOWN.has(fr) && fr !== fb;
 }
 
 // Test-Executor mit FEST registrierten Senken (wie Produktion, nur mit Test-Handlern).
@@ -107,6 +110,12 @@ test("R3) Modell-Vorschlag ohne Fremdfamilien-Attestation wird nicht eingelöst"
   s2.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1",
     builderModel: "claude-opus-5.5", reviewerModel: "claude-sonnet-4" });
   await assert.rejects(() => exec.execute("person.delete", ctx, s2), /Freigabe/);
+  // Review R2 (H-1): leerer/unbekannter Builder ist auch mit fremdem Reviewer nicht einlösbar
+  for (const builderModel of ["", "xyz-bot"]) {
+    const s3 = new FakeStore();
+    s3.grant({ tenantId: "t-aa", effectId: "person.delete", subjectRef: "person-1", builderModel, reviewerModel: "gpt-6-sol" });
+    await assert.rejects(() => exec.execute("person.delete", ctx, s3), /Freigabe/);
+  }
 });
 
 test("ADVERSARIAL b) erfundene Freigabe ohne echten DB-Eintrag wird abgewiesen", async () => {

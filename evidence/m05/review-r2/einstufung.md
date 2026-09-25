@@ -17,4 +17,20 @@
 
 Live-Lauf Codex: Docker nicht verfügbar (Umgebung). Unabhängiger Live-Nachweis: GitHub-CI `vv-ci` auf `2ff76e1` 9/9 grün.
 
-## Gemini 3.1 Pro — ausstehend
+## Gemini 3.1 Pro — Urteil „bestanden"
+
+Bericht vom Betreiber im Chat übergeben (25.09.2026, als Text; Kernaussagen hier festgehalten).
+
+| # | Befund | Einstufung |
+|---|---|---|
+| NIEDRIG | GitHub-Ruleset/Required Checks fehlen (Remote) | bekannt (R6/P52) — Remote inzwischen angelegt, Repo öffentlich; Ruleset = Betreiber-Aktion |
+| NIEDRIG | Image-Digest-Pinning nur per Skript | bekannt (P47-Residuum, Registry-Egress) — Stage-1 |
+
+Bestätigt: Mandantentrennung, Vier-Augen/Zustandsautomat, Audit/Outbox (R1), Datenschutz, G-1/G-2/G-3 gelöst.
+**Bewertung der Prüftiefe:** statisch und überwiegend dokumentationsgestützt; keine der Codex-Befunde (C-1, H-1, H-2, M-1, M-2, N-1) gefunden, keine Vollständigkeitsbestätigung der 12 Teile im Bericht. Keine Code-Maßnahme aus Gemini.
+
+## Ergebnis Reparaturrunde 2 (nach beiden Berichten, eine Runde)
+
+Behoben: H-1a, H-2, M-1, M-2, N-1, R6-Probe — je Fix gate-blockierende Gegenprobe (8 neu), gegen echte PostgreSQL 16:
+**grün auf dem reparierten Stand, rot gegen den alten Migrationsstand** (Negativ-Nachweis: alle 8 R2-Proben FAIL, M-2 reproduziert exakt `duplicate key … mar_one_open`).
+Nicht behoben (Betreiber-Entscheidung): C-1 = dokumentierte Design-Grenze, Stage-1-Pflicht vor S3. H-1b = Stage-1 (BASIS-09).

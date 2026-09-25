@@ -1,4 +1,4 @@
-# M05 — Tests, Typecheck, Validatoren (Lauf: 2026-09-24 22:12 CEST)
+# M05 — Tests, Typecheck, Validatoren (Lauf: 2026-09-25 06:41 CEST)
 
 ## Validatoren LIVE (VV_REQUIRE_LIVE=1, vv_app gegen echte PostgreSQL)
 [PASS] ADR-09  Merge: eindeutige Codes, ein Tabellen-Eigentümer  (1/1 ok)
@@ -6,7 +6,7 @@
 [PASS] ADR-01  RLS FORCE + Policy je mandantenbezogener Tabelle  (19/19 ok)
 [PASS] ADR-02  Keine verbotenen Cross-Modul-Imports (inkl. dynamisch)  (1/1 ok)
 [PASS] ADR-04  Zentraler Policy-Prüfpunkt nicht umgangen  (3/3 ok)
-[PASS] ADR-09  project.json ↔ reale Tabellen (Abgleich)  (25/25 ok)
+[PASS] ADR-09  project.json ↔ reale Tabellen (Abgleich)  (26/26 ok)
 [PASS] K29     9-teiliges Bau-Dossier + Mermaid (status-bewusst)  (15/15 ok)
 [PASS] ADR-09  Jedes Gate hat verlinkte Evidenz  (35/35 ok)
 [PASS] K31     Kein Personenbezug im Repo/CI (nur synthetisch)  (2/2 ok)

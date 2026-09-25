@@ -449,15 +449,22 @@ CREATE OR REPLACE FUNCTION m05_apply_hold(p_period uuid, p_approval uuid, p_deci
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE s m05_settings := m05_settings_get(); v_until date;
 BEGIN
+  -- Review R2 (Codex M-2): idempotent — nur wer den offenen Antrag schließt, setzt den Hold
+  -- (ein paralleler Tageslauf, der denselben Antrag noch sah, endet hier ohne Wirkung).
+  UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected'
+   WHERE tenant_id = vv_current_tenant() AND approval_id = p_approval AND closed_at IS NULL;
+  IF NOT FOUND THEN RETURN; END IF;
   v_until := (greatest(coalesce(p_decided, m05_today()), m05_today()) + make_interval(months => s.hold_extension_months))::date;
   PERFORM m05_ctx('job', 'system:m05-hold', m05_today(), p_approval);
   UPDATE membership_period SET retention_until = greatest(retention_until, v_until)
    WHERE tenant_id = vv_current_tenant() AND id = p_period AND status = 'gesperrt';
-  UPDATE m05_approval_request SET closed_at = now(), outcome = 'rejected'
-   WHERE approval_id = p_approval AND closed_at IS NULL;
   PERFORM vv_audit_write('m05.retention.hold', p_period::text,
     jsonb_build_object('approval_id', p_approval, 'retention_until', v_until, 'months', s.hold_extension_months),
     coalesce(vv_actor(), 'system:m05-hold'));
+  -- Review R2 (Codex M-1): Zustandsänderung => Outbox-Ereignis in derselben Transaktion (ADR-05),
+  -- nur IDs + Datum (kein Personenbezug).
+  PERFORM m05_emit('m05.retention.hold', p_period,
+    jsonb_build_object('approval_id', p_approval, 'retention_until', v_until), ':' || p_approval);
 END $$;
 
 -- Entscheidung (Vorstand/Obmann). Freigeber = app.actor (vv_decide_approval), nie der Antragsteller.
@@ -675,7 +682,8 @@ BEGIN
   -- (4a) G-3: direkt (z. B. über vv_decide_approval) abgelehnte Anonymisierungsanträge -> Legal Hold
   FOR r IN SELECT q.period_id, q.approval_id, a.decided_at FROM m05_approval_request q JOIN approval a ON a.id = q.approval_id
             WHERE q.tenant_id = vv_current_tenant() AND q.effect_id = 'm05.membership.anonymize'
-              AND q.closed_at IS NULL AND a.status = 'rejected' LOOP
+              AND q.closed_at IS NULL AND a.status = 'rejected'
+            FOR UPDATE OF q SKIP LOCKED LOOP                              -- Review R2 (M-2): parallelfest
     PERFORM m05_apply_hold(r.period_id, r.approval_id, r.decided_at::date);
     n_hold := n_hold + 1;
   END LOOP;
@@ -685,7 +693,14 @@ BEGIN
               AND NOT EXISTS (SELECT 1 FROM m05_approval_request q JOIN approval a ON a.id = q.approval_id
                                WHERE q.tenant_id = p.tenant_id AND q.period_id = p.id
                                  AND q.effect_id = 'm05.membership.anonymize' AND q.closed_at IS NULL
-                                 AND a.status <> 'rejected' AND (a.expires_at IS NULL OR a.expires_at > now())) LOOP
+                                 AND a.status <> 'rejected' AND (a.expires_at IS NULL OR a.expires_at > now()))
+            FOR UPDATE OF p SKIP LOCKED LOOP                              -- Review R2 (M-2): parallelfest
+    -- Nachprüfung mit frischem Snapshot unter der Zeilensperre: hat ein paralleler Lauf den Antrag
+    -- inzwischen angelegt (committet), wird übersprungen statt den ganzen Tageslauf abzubrechen.
+    CONTINUE WHEN EXISTS (SELECT 1 FROM m05_approval_request q JOIN approval a ON a.id = q.approval_id
+                           WHERE q.tenant_id = r.tenant_id AND q.period_id = r.id
+                             AND q.effect_id = 'm05.membership.anonymize' AND q.closed_at IS NULL
+                             AND a.status <> 'rejected' AND (a.expires_at IS NULL OR a.expires_at > now()));
     PERFORM m05_open_request(r.id, 'm05.membership.anonymize',
       jsonb_build_object('period_id', r.id, 'retention_until', r.retention_until), r.version, 'system:m05-retention', 'deletion');
     n_ret := n_ret + 1;

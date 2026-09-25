@@ -50,6 +50,19 @@ O=$(dec sub-trainer-aa "'gpt-5.3-codex'"); echo "$O" | grep -qi "kein Recht"; ck
 O=$(dec human-unbekannt "'gpt-5.3-codex'"); echo "$O" | grep -qi "kein Recht"; ck "R4: unbekannter Actor (kein Principal) abgewiesen" $?
 O=$(dec sub-vorstand-aa "NULL"); echo "$O" | grep -qi "Attestation"; ck "R3: Modell-Vorschlag ohne Reviewer-Attestation nicht freigebbar" $?
 O=$(dec sub-vorstand-aa "'claude-sonnet-4'"); echo "$O" | grep -qi "Attestation"; ck "R3: Reviewer aus gleicher Modellfamilie abgewiesen" $?
+# Review R2 (Codex H-1): nur BEKANNTE Modellfamilien zählen — leerer/unbekannter Builder ist nicht freigebbar
+AT=$(q vv_app <<<"SELECT vv_attestation_ok('', 'gpt-5')::text||'/'||vv_attestation_ok('xyz-bot','gpt-5')::text||'/'||vv_attestation_ok('claude-opus','foo-9')::text||'/'||vv_attestation_ok('claude-opus','gemini-3.1-pro')::text" | tail -1)
+[ "$AT" = "false/false/false/true" ]; ck "R2/H-1: Attestation nur bei bekannten, verschiedenen Familien ($AT)" $?
+q vv_app >/dev/null 2>&1 <<SQL
+BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT set_config('app.actor','sub-schrift-aa',true);
+INSERT INTO approval(tenant_id,kind,effect_id,subject_ref,requested_by,builder_model) VALUES ('$AA','external_pii','q05.import.commit','ci-emptyb','sub-schrift-aa',''); COMMIT;
+SQL
+EID=$(q vv_bootstrap <<<"SELECT id FROM approval WHERE subject_ref='ci-emptyb'" | grep -iE '^[0-9a-f-]{36}$' | head -1)
+O=$(q vv_app 2>&1 <<SQL
+BEGIN; SELECT set_config('app.tenant_id','$AA',true); SELECT set_config('app.actor','sub-vorstand-aa',true);
+SELECT vv_decide_approval('$EID','approved','gpt-5'); COMMIT;
+SQL
+); echo "$O" | grep -qi "Attestation"; ck "R2/H-1: Antrag mit leerem Builder auch mit fremdem Reviewer nicht freigebbar" $?
 O=$(q vv_bootstrap <<<"UPDATE approval SET status='approved', approved_by='sub-vorstand-aa', decided_at=now() WHERE id='$AID'" 2>&1); echo "$O" | grep -qi "approval_attestation_ck"; ck "R3: CHECK verhindert 'approved' ohne Attestation (auch als Eigentümer)" $?
 dec sub-vorstand-aa "'gpt-5.3-codex'" >/dev/null
 AB=$(q vv_bootstrap <<<"SELECT status||'/'||approved_by||'/'||reviewer_model FROM approval WHERE id='$AID'" | grep -i approved/ | head -1)
@@ -92,6 +105,10 @@ echo "$O" | grep -qi "Antragsteller-Spoofing"; ck "S0-2: requested_by ≠ app.ac
 
 # Audit append-only inkl. TRUNCATE
 O=$(q vv_bootstrap <<<"TRUNCATE audit_log" 2>&1); echo "$O" | grep -qi "append-only"; ck "Audit: TRUNCATE für Eigentümer blockiert" $?
+
+# Review R2 (H-2): Der Claim bedient nur Topics aus dem DB-Consumer-Register (outbox_consumer).
+# Die synthetischen Stage-0-Proben-Topics werden hier — nur in der frischen Test-DB — registriert.
+q vv_bootstrap >/dev/null 2>&1 <<<"INSERT INTO outbox_consumer(topic,consumer) SELECT t,'ci:stage0-probe' FROM unnest(ARRAY['hc','if','lk','dz','fx']) t ON CONFLICT DO NOTHING;"
 
 # H2/H3: Hard-Crash-DLQ + in-flight bleibt am Leben
 q vv_app >/dev/null 2>&1 <<<"BEGIN; SELECT set_config('app.tenant_id','$AA',true); INSERT INTO outbox(tenant_id,topic,payload,idempotency_key) VALUES ('$AA','hc','{}','cihc'); COMMIT;"
@@ -172,6 +189,11 @@ PK=$(q vv_bootstrap <<<"SELECT attempts||'/'||(processed_at IS NULL)::text||'/'|
 [ "$PK" = "0/true/true" ]; ck "R5: Event ohne Consumer bleibt unberührt geparkt ($PK)" $?
 NN=$(q vv_worker <<<"SELECT count(*) FROM vv_outbox_claim(50, NULL)" | grep -E '^[0-9]+$' | head -1)
 [ "$NN" = 0 ]; ck "R5: Claim ohne Topic-Liste claimt nichts (deny-by-default)" $?
+# Review R2 (Codex H-2): auch eine vom Aufrufer AUSDRÜCKLICH übergebene fremde Topic-Liste claimt nichts
+NR=$(q vv_worker <<<"SELECT count(*) FROM vv_outbox_claim(50, ARRAY['pk.ohne.consumer'])" | grep -E '^[0-9]+$' | head -1)
+PK2=$(q vv_bootstrap <<<"SELECT attempts||'/'||(processed_at IS NULL)::text FROM outbox WHERE idempotency_key='cipk'")
+[ "$NR" = 0 ] && [ "$PK2" = "0/true" ]; ck "R2/H-2: nicht registriertes Topic trotz expliziter Liste nicht claimbar ($NR, $PK2)" $?
+O=$(q vv_worker <<<"INSERT INTO outbox_consumer(topic,consumer) VALUES ('pk.ohne.consumer','x')" 2>&1); echo "$O" | grep -qi "permission denied"; ck "R2/H-2: Worker kann das Consumer-Register nicht erweitern" $?
 
 # M05/BASIS-02 (Modul-Bau): umfassende adversariale DB-Gegenproben (Python, psycopg)
 if python3 "$(dirname "$0")/m05_db_asserts.py"; then pass "M05-Gegenproben (scripts/m05_db_asserts.py)"; else fail "M05-Gegenproben (scripts/m05_db_asserts.py)"; fi

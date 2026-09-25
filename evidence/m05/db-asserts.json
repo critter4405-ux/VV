@@ -1,7 +1,7 @@
 {
-  "run": "e6bcc3",
+  "run": "b1ee4d",
   "passed": true,
-  "total": 133,
+  "total": 137,
   "results": [
     {
       "name": "Migrationen 0006–0011 idempotent (erneuter Lauf fehlerfrei)",
@@ -496,7 +496,7 @@
       "ok": true
     },
     {
-      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (2.7 s)",
+      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (1.6 s)",
       "ok": true
     },
     {
@@ -509,6 +509,22 @@
     },
     {
       "name": "G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag",
+      "ok": true
+    },
+    {
+      "name": "R2/M-1: Legal Hold erzeugt genau EIN Outbox-Ereignis (auch bei direkter Ablehnung), ohne Personenbezug",
+      "ok": true
+    },
+    {
+      "name": "R2/M-2: zwei parallele Tagesläufe enden beide fehlerfrei, genau EIN Anonymisierungs-Antrag",
+      "ok": true
+    },
+    {
+      "name": "R2/N-1: Import-Batch kann keine Freigabe eines fremden Mandanten referenzieren (auch als Eigentümer)",
+      "ok": true
+    },
+    {
+      "name": "R2/N-1: beide Freigabe-Fremdschlüssel sind zusammengesetzt (tenant_id, approval_id)",
       "ok": true
     },
     {
