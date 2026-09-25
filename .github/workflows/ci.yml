@@ -173,7 +173,13 @@ jobs:
   secret-scan:
     name: Secret-Scan (gitleaks)
     runs-on: ubuntu-latest
+    permissions: { contents: read }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          # Authentifizierte Kontotyp-Abfrage (persönliches Konto = keine Lizenz nötig). Ohne Token lief
+          # die Abfrage ins API-Rate-Limit und die Action verlangte fälschlich eine Lizenz (CI rot, kein Fund).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
