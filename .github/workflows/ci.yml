@@ -79,7 +79,7 @@ jobs:
           VV_PGHOST: localhost
           PW: change_me_dev_only
         run: bash scripts/ci_db_asserts.sh   # ruft scripts/m05_db_asserts.py (M05/BASIS-02, adversarial) auf
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "22" }
       - name: M05-API-Integrationstest gegen echte PostgreSQL (vv_app, RLS aktiv)
         working-directory: apps/web
@@ -105,7 +105,7 @@ jobs:
     defaults: { run: { working-directory: apps/web } }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
@@ -118,7 +118,7 @@ jobs:
     defaults: { run: { working-directory: apps/worker } }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "22" }
       - run: npm ci
       - run: npm run typecheck
@@ -136,7 +136,7 @@ jobs:
         working-directory: apps/${{ matrix.app }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "22" }
       - name: npm audit (Produktions-Abhängigkeiten)
         run: npm audit --omit=dev --audit-level=high
@@ -155,7 +155,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with: { python-version: "3.12" }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: "22" }
       - name: Mermaid-Blöcke extrahieren
         run: python scripts/mermaid_lint.py
