@@ -9,7 +9,7 @@
 # Der reale Repo-Baum wird NICHT verändert (Arbeit in einer Temp-Kopie, Übertragung per docker cp).
 #
 # Aufruf aus dem Repo-Root, am zuverlässigsten in WSL (nicht Git Bash, MSYS-Pfadumwandlung):
-#     bash scripts/review_m05.sh            # optional: VV_PGPORT=55433
+#     bash scripts/review_m05.sh            # optional: VV_PGPORT=55433, VV_KEEP_DB=1
 # Braucht Registry-Zugang für postgres:16, python:3.12, node:22 (bzw. lokal vorhandene Images).
 #
 # Das Skript URTEILT NICHT. Es liefert je Schritt PASS/FAIL + die vollständigen Logs unter
@@ -25,7 +25,14 @@ WORK="$(mktemp -d)"; PASS=0; FAIL=0
 ok(){ echo "  [PASS] $1"; PASS=$((PASS+1)); }
 no(){ echo "  [FAIL] $1"; FAIL=$((FAIL+1)); }
 hd(){ echo; echo "== $1 =="; }
-cleanup(){ docker rm -f "$PGC" "$PYC" "$NDC" >/dev/null 2>&1; docker network rm "$NET" >/dev/null 2>&1; rm -rf "$WORK"; }
+# VV_KEEP_DB=1: PostgreSQL-Container bleibt nach dem Lauf stehen (127.0.0.1:$PORT, user vv_bootstrap/vv_app/
+# vv_worker, Passwort change_me_dev_only, nur synthetische Daten) — für gezielte SQL-Nachproben des Prüfers.
+# Aufräumen danach: docker rm -f vv_m05_pg && docker network rm vv_m05_net
+cleanup(){
+  docker rm -f "$PYC" "$NDC" >/dev/null 2>&1
+  if [ "${VV_KEEP_DB:-0}" = 1 ]; then echo "VV_KEEP_DB=1: $PGC läuft weiter auf 127.0.0.1:$PORT";
+  else docker rm -f "$PGC" >/dev/null 2>&1; docker network rm "$NET" >/dev/null 2>&1; fi
+  rm -rf "$WORK"; }
 trap cleanup EXIT
 
 command -v docker >/dev/null || { echo "Docker nicht auf PATH"; exit 2; }
