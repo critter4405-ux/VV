@@ -1,6 +1,6 @@
 # Evidenz — Gate M05 (Modul Mitglieder, Phase 1) — DoD-Checkliste (Bau-Auftrag v1.1 §4)
 
-> **Stand:** 24.09.2026 · Bau-KI Claude Code + Opus 5.5 · **Gate gesperrt** bis Vier-Augen-Review (Codex + Gemini) und **Betreiber-Freigabe**. Die Bau-KI öffnet kein Gate.
+> **Stand:** 25.09.2026 · Bau-KI Claude Code + Opus 5.5 · **Gate M05 FREIGEGEBEN** durch Betreiber-Entscheidung (25.09.2026, Merge PR #16 → `master` `b60c81d`). Die Bau-KI hat das Gate nicht geöffnet.
 
 | # | DoD-Punkt | Status | Nachweis |
 |---|---|---|---|
@@ -18,4 +18,4 @@
 | 12 | Review Runde 2 (Codex GPT-6 Sol + Gemini): Befunde eingestuft, echte behoben, je Fix Gegenprobe (grün neu / rot alt) | erfüllt | [review-r2/einstufung.md](review-r2/einstufung.md) · M05 137/137, Stage-0 37/37 in [db-asserts.txt](db-asserts.txt) |
 | 13 | Bestätigungs-Review Runde 3 (Codex GPT-6 Sol, Live-Lauf in Docker): Urteil „bestanden", keine neuen Befunde, R2-Fixes live bestätigt | erfüllt | [review-r3/einstufung.md](review-r3/einstufung.md) · [Bericht](review-r3/REVIEW-M05-Codex-R3.md) |
 
-**Offen (nicht Bau-KI):** — Bestätigungs-Review erledigt (#13) · Betreiber-Freigabe M05-Gate (Phase D). GitHub-Ruleset (R6) bei Remote-Anlage.
+**Freigabe:** erteilt (Betreiber, 25.09.2026) — Register P56. Dokumentierte Restpunkte (Stage-1/Betreiber-Aktionen): Register P55.
