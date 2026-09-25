@@ -1,0 +1,21 @@
+# Negativnachweis: Codex-Reproduktion C-1 (P54) gegen den ALTEN Stand master fa46fdb — frische DB vv_alt, Migrationen 0001–0012, synthetische Seeds
+# Verbindung als vv_app (nur Web-App-Zugangsdaten). Erwartung ALT: gelingt (Lücke). NEU (0013): verweigert — siehe c1-asserts.txt, DoD1.
+
+$ psql -U vv_app  (Repro 1: Mandant B lesen)
+BEGIN
+00000000-0000-0000-0000-0000000000bb
+b0000000-0000-0000-0000-000000000001|Badmin
+COMMIT
+
+$ psql -U vv_app  (Repro 2: Antragsteller + Freigeber in EINER Verbindung per set_config)
+BEGIN
+00000000-0000-0000-0000-0000000000aa
+sub-schrift-aa
+63ad0fc9-5576-4176-93db-9e02a69b512c
+sub-vorstand-aa
+{"ok": true}
+approved|sub-schrift-aa|sub-vorstand-aa
+ROLLBACK
+
+# Direkte Tabellenrechte von vv_app im ALTEN Stand:
+19

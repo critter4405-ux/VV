@@ -22,7 +22,7 @@ export class DbApprovalStore implements ApprovalStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+      await client.query("SELECT vv_worker_context($1)", [tenantId]);   // C-1: Systemkontext (nur vv_worker)
       const { rows } = await client.query(
         "SELECT vv_consume_approval($1, $2) AS id", [effectId, subjectRef]);
       if (!rows[0] || rows[0].id == null) {

@@ -10,7 +10,7 @@ import glob
 from pathlib import Path
 from ..common import REPO, CheckResult, Finding, strip_sql_comments
 
-CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)\s*\((.*?)\)\s*;",
+CREATE_TABLE = re.compile(r"CREATE\s+(?:(?:GLOBAL|LOCAL)\s+)?(?:UNLOGGED\s+|TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)\s*\((.*?)\)\s*;",
                           re.IGNORECASE | re.DOTALL)
 ENABLE = re.compile(r"ALTER\s+TABLE\s+([A-Za-z_]\w*)\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY", re.IGNORECASE)
 FORCE = re.compile(r"ALTER\s+TABLE\s+([A-Za-z_]\w*)\s+FORCE\s+ROW\s+LEVEL\s+SECURITY", re.IGNORECASE)

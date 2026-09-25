@@ -1,31 +1,16 @@
-// VV Platform — Tenant-Kontext (ADR-01), WP1-gehärtet.
-// Review-Befund Codex #3 / Gemini A: `set_config(...,true)` (SET LOCAL) wirkt NUR in einer
-// Transaktion. Ohne BEGIN war der Tenant-Kontext unwirksam (RLS fiel closed) bzw. hätte bei
-// einem "Fix" auf Session-Ebene im Connection-Pool Daten über Mandantengrenzen geleakt.
-// Daher: harter Transaktions-Wrapper. SET LOCAL ist damit PgBouncer-Transaction-Mode-tauglich.
+// VV Platform — Tenant-/Actor-Kontext (ADR-01), C-1 „Kontext-Signatur“ (Grill P58).
+// Früher setzte die App app.tenant_id/app.actor per set_config — mit den DB-Zugangsdaten der App frei fälschbar
+// (Codex C-1, P54). Jetzt übergibt die App NUR noch das signierte Ticket; die DB prüft Signatur, Ablauf,
+// Schlüssel-Kennung und Einmal-Nutzung und setzt den Kontext selbst (vv_set_context). Die App kann Mandant und
+// Nutzer weder wählen noch wechseln (ein Kontext je Transaktion).
+// Transaktions-Wrapper bleibt Pflicht: der geprüfte Kontext gilt genau für diese Transaktion (pool-/PgBouncer-sicher).
 import type { PoolClient } from "pg";
 
-/**
- * WICHTIG: `tenantId` MUSS serverseitig aus verifizierten OIDC-Claims/Mitgliedschaften
- * stammen (BASIS-10/ADR-03) — niemals ungeprüft aus dem Request. Die Durchsetzung erfolgt
- * am Auth-Layer (WP6); diese Funktion setzt den bereits verifizierten Tenant transaktional.
- */
-export async function withTenant<T>(
-  client: PoolClient,
-  tenantId: string,
-  fn: () => Promise<T>,
-  actor?: string,
-): Promise<T> {
-  if (!tenantId) throw new Error("withTenant: leerer tenantId (deny-by-default)");
+export async function withTenant<T>(client: PoolClient, ticket: string, fn: () => Promise<T>): Promise<T> {
+  if (!ticket) throw new Error("withTenant: kein Ticket (deny-by-default)");
   await client.query("BEGIN");
   try {
-    // SET LOCAL gilt nur innerhalb DIESER Transaktion -> RLS-Filter, pool-sicher.
-    await client.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
-    // Actor-Claim (Review-Runde 4): transaktionsgebunden, aus verifizierten OIDC-Claims. Die
-    // DB-Entscheidungs-Funktion vv_decide_approval nimmt den Freigeber HIERAUS, nie aus dem Body.
-    if (actor) {
-      await client.query("SELECT set_config('app.actor', $1, true)", [actor]);
-    }
+    await client.query("SELECT vv_set_context($1)", [ticket]);
     const result = await fn();
     await client.query("COMMIT");
     return result;

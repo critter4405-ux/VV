@@ -37,6 +37,7 @@ services:
       - "9000:9000"   # Management-Port (Health /health/ready)
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
+    networks: [ default, ticketnet ]   # C-1: Ticket-Dienst holt JWKS nur intern
     healthcheck:
       # Semantische Readiness statt reinem TCP-Socket (Review-Befund Codex #11).
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && cat <&3 | grep -q UP"]
@@ -74,6 +75,8 @@ services:
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_BUCKET: ${S3_BUCKET}
       S3_REGION: ${S3_REGION}
+      # C-1: nur die INTERNE Dienst-URL — die App sieht den Ticket-Schlüssel nie.
+      TICKET_URL: ${TICKET_URL:-http://ticket:8081}
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,6 +84,9 @@ services:
         condition: service_started
       minio:
         condition: service_started
+      ticket:
+        condition: service_started   # fail-closed: ohne Ticket-Dienst antwortet die App 503
+    networks: [ default, ticketnet ]
     ports:
       - "3000:3000"
     healthcheck:
@@ -88,6 +94,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+
+  # C-1 „Kontext-Signatur“ (Grill P58): prüft das Keycloak-Access-Token, stellt 60-s-HMAC-Tickets aus.
+  # Zustandslos, KEIN Port nach außen (nur internes Netz ticketnet), Schlüssel NUR als Docker-Secret in diesem
+  # Container (Laufzeit-Datei aus scripts/rotate_ticket_key.sh; verschlüsselt verwaltet mit sops/age, ADR-11).
+  ticket:
+    build:
+      context: ./apps/ticket
+    restart: always
+    environment:
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_AUDIENCE: ${OIDC_CLIENT_ID}
+      TICKET_KEYRING_FILE: /run/secrets/ticket_keyring
+      TICKET_TTL_S: "60"
+      TICKET_MAX_TOKEN_AGE_S: "300"
+    secrets:
+      - ticket_keyring
+    networks: [ ticketnet ]
+    read_only: true
+    tmpfs: [ /tmp ]
+    cap_drop: [ ALL ]
+    security_opt: [ "no-new-privileges:true" ]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   worker:
     build:
@@ -115,3 +147,13 @@ services:
 volumes:
   pgdata:
   miniodata:
+
+networks:
+  # Internes Netz Web <-> Ticket-Dienst <-> Keycloak (kein Internet-Zugang, nicht veröffentlicht).
+  ticketnet:
+    internal: true
+
+secrets:
+  # Laufzeit-Keyring (0600, NIE im Repo — .secrets/ ist ignoriert). Erzeugen/Wechseln: scripts/rotate_ticket_key.sh
+  ticket_keyring:
+    file: ${TICKET_KEYRING_FILE:-./.secrets/ticket_keyring.json}

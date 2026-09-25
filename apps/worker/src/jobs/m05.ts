@@ -28,7 +28,8 @@ async function inTenant<T>(db: Db, tenantId: string, fn: (q: (sql: string, p?: u
   const client = await db.connect();
   try {
     await client.query("BEGIN");
-    await client.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+    // C-1: Systemkontext statt frei setzbarer GUC — fester Akteur system:worker, nur Rolle vv_worker (DB-erzwungen).
+    await client.query("SELECT vv_worker_context($1)", [tenantId]);
     const out = await fn(async (sql, p) => (await client.query(sql, p)).rows);
     await client.query("COMMIT");
     return out;
@@ -82,7 +83,10 @@ export async function runM05Daily(db: Db): Promise<Record<string, unknown>> {
   const client = await db.connect();
   let tenants: string[];
   try {
-    tenants = (await client.query("SELECT id FROM tenant ORDER BY id")).rows.map((r: { id: string }) => r.id);
+    // C-1: kein direktes Tabellenrecht mehr — Mandantenliste über die Systemfunktion.
+    tenants = (await client.query("SELECT t AS id FROM vv_worker_tenants() t")).rows.map((r: { id: string }) => r.id);
+    // Aufräumen der Kontext-Signatur (abgelaufene Einmal-Kennungen, Kontexte beendeter Verbindungen).
+    await client.query("SELECT vv_ticket_housekeeping()");
   } finally {
     client.release();
   }

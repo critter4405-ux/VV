@@ -8,9 +8,10 @@ import { checkPolicy, type PolicyDecision } from "../../platform/policy.ts";
 import { withTenant } from "../../platform/tenant.ts";
 import { pool } from "../../db.ts";
 
-export interface Ctx { tenantId: string; actor: string }
+/** tenantId/actor = Anzeige/Vorprüfung; MASSGEBLICH ist das Ticket (die DB setzt daraus Mandant + Akteur, C-1). */
+export interface Ctx { tenantId: string; actor: string; ticket: string }
 
-export type ErrorKind = "forbidden" | "not_found" | "conflict" | "invalid" | "internal";
+export type ErrorKind = "unauthorized" | "forbidden" | "not_found" | "conflict" | "invalid" | "internal";
 export type Result<T> = { ok: true; data: T } | { ok: false; error: ErrorKind; reason: string };
 
 // "any": grobe Vorprüfung „Recht irgendwo" (R7). Zulässig NUR, weil JEDE M05-DB-Funktion das Recht
@@ -22,6 +23,7 @@ export function mapDbError(err: unknown): { ok: false; error: ErrorKind; reason:
   const e = err as { code?: string; message?: string };
   const msg = typeof e?.message === "string" ? e.message.split("\n")[0]!.slice(0, 300) : "";
   switch (e?.code) {
+    case "28000": return { ok: false, error: "unauthorized", reason: "Ticket verweigert" };   // C-1: DB lehnt Ticket ab
     case "42501": return { ok: false, error: "forbidden", reason: "deny-by-default" };
     case "P0002": return { ok: false, error: "not_found", reason: msg };
     case "40001": case "23505": return { ok: false, error: "conflict", reason: msg };
@@ -35,14 +37,14 @@ function denied(d: PolicyDecision): { ok: false; error: ErrorKind; reason: strin
   return { ok: false, error: "forbidden", reason: d.reason };
 }
 
-/** Ein DB-Aufruf in einer Transaktion (Tenant + Actor transaktionsgebunden). Nur nach Policy-Guard. */
+/** Ein DB-Aufruf in einer Transaktion (Kontext aus dem geprüften Ticket). Nur nach Policy-Guard. */
 async function dbCall<T>(ctx: Ctx, sql: string, params: unknown[], map: (rows: any[]) => T): Promise<Result<T>> {
   const client = await pool.connect();
   try {
-    const data = await withTenant(client, ctx.tenantId, async () => {
+    const data = await withTenant(client, ctx.ticket, async () => {
       const { rows } = await client.query(sql, params);
       return map(rows);
-    }, ctx.actor);
+    });
     return { ok: true, data };
   } catch (err) {
     return mapDbError(err);

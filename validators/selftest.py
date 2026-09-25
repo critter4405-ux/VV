@@ -151,6 +151,38 @@ _r2 = _pr.run()
 expect("P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)",
        all(f.ok for f in _r2.findings if "pgboss" in f.detail))
 
+# C-1 (Kontext-Signatur): Kontext-GUC in App-Code und Schlüsselmaterial in der Web-App werden ROT,
+# ein bloßer Kommentar bleibt GRÜN; eine spätere GUC-Definition von vv_current_tenant() wird ROT.
+from validators.checks import c1_context as _c1
+_c1dir = os.path.join("apps", "web", "src", "modules", "person")
+_c1files = {n: os.path.join(_c1dir, n) for n in ("_st_c1_guc.ts", "_st_c1_ok.ts", "_st_c1_key.ts", "_st_c1_setlocal.ts")}
+try:
+    open(_c1files["_st_c1_guc.ts"], "w", encoding="utf-8").write(
+        'export const q = (c: any, t: string) => c.query("SELECT set_config(' + "'app.tenant_id'" + ', $1, true)", [t]);\n')
+    open(_c1files["_st_c1_ok.ts"], "w", encoding="utf-8").write(
+        "// früher: set_config('app.tenant_id') — heute nur vv_set_context(ticket)\nexport const ok = 1;\n")
+    open(_c1files["_st_c1_key.ts"], "w", encoding="utf-8").write(
+        'import { createHmac } from "node:crypto";\nexport const s = (k: Buffer) => createHmac("sha256", k);\n')
+    open(_c1files["_st_c1_setlocal.ts"], "w", encoding="utf-8").write(
+        'export const q = (c: any) => c.query("SET LOCAL app.actor = ' + "'x'" + '");\n')
+    _f = _c1.static_findings()
+    expect("C-1: set_config('app.…') im App-Code wird ROT", any(not f.ok and "_st_c1_guc" in f.detail for f in _f))
+    expect("C-1: SET LOCAL app.actor im App-Code wird ROT", any(not f.ok and "_st_c1_setlocal" in f.detail for f in _f))
+    expect("C-1: Erwähnung nur im Kommentar bleibt GRÜN", not any("_st_c1_ok" in f.detail for f in _f))
+    expect("C-1: HMAC-/Schlüsselmaterial in der Web-App wird ROT", any(not f.ok and "_st_c1_key" in f.detail for f in _f))
+    _mig = ["CREATE OR REPLACE FUNCTION vv_current_tenant() RETURNS uuid LANGUAGE sql AS $$ SELECT 1 $$;",
+            "CREATE OR REPLACE FUNCTION vv_actor() RETURNS text LANGUAGE sql AS $$ SELECT 'x' $$;",
+            "CREATE OR REPLACE FUNCTION vv_current_tenant() RETURNS uuid LANGUAGE sql AS $$ SELECT current_setting('app.tenant_id')::uuid $$;"]
+    _m = _c1.static_findings(files=[], migrations=_mig)
+    expect("C-1: spätere GUC-Definition von vv_current_tenant() wird ROT",
+           any(not f.ok and "vv_current_tenant" in f.detail for f in _m))
+    expect("C-1: reale Migrationen: Kontext-Funktionen lesen keine GUC (GRÜN)",
+           all(f.ok for f in _c1.static_findings(files=[]) ))
+finally:
+    for _p in _c1files.values():
+        try: os.remove(_p)
+        except OSError: pass
+
 fails = [n for n, ok in R if not ok]
 print("-" * 60)
 print(f"Validator-Selbsttest: {sum(1 for _,ok in R if ok)}/{len(R)} Erwartungen erfüllt"

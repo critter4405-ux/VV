@@ -5,6 +5,8 @@
 *.key
 *.pem
 secrets/
+.secrets/
+*.sops.json.tmp
 *.decrypted
 
 # --- Node / Next.js ---
@@ -47,3 +49,4 @@ docs/**/*.html
 # Register = Menschen-Ebene (Projekt), nicht ins Code-Repo
 VV_Offene_Punkte_Register.md
 review-m05-out/
+review-c1-out/

@@ -1,0 +1,12 @@
+== C-1 Ende-zu-Ende (Token -> Ticket-Dienst -> Web -> DB) ==
+  [OK]  gültiges Access-Token -> Ticket -> Daten (200)
+  [OK]  Akteur im Audit stammt aus dem Ticket (sub-vorstand-aa)
+  [OK]  Mandant B im Token -> keine Rechte des A-Nutzers (403)
+  [OK]  fremd signiertes Token -> 401
+  [OK]  ID-Token statt Access-Token -> 401
+  [OK]  falsche Audience -> 401
+  [OK]  Ticket-Dienst weg -> 503 'vorübergehend nicht verfügbar'
+  [OK]  …und kein Datenzugriff (kein neuer Lese-Audit-Eintrag, kein Rückfall)
+  [OK]  Dienst wieder da (restart) -> 200, zustandslos
+  [OK]  kein Token in den Dienst-Logs
+C-1 Ende-zu-Ende grün.

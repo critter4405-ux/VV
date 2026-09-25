@@ -1,0 +1,2 @@
+DB frisch migriert.
+Keyring /tmp/vvring/ring.json

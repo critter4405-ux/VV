@@ -1,0 +1,567 @@
+{
+  "run": "e9c39c",
+  "passed": true,
+  "total": 140,
+  "results": [
+    {
+      "name": "Migrationen 0006–0013 idempotent (erneuter Lauf fehlerfrei)",
+      "ok": true
+    },
+    {
+      "name": "vv_definer NOSUPERUSER + NOBYPASSRLS (RLS gilt in Definer-Funktionen)",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf member",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf membership_period",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf membership_status_history",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf membership_type_assignment",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf membership_proposal",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf m05_approval_request",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf m05_import_batch",
+      "ok": true
+    },
+    {
+      "name": "vv_app hat keinen Direktzugriff auf principal_link",
+      "ok": true
+    },
+    {
+      "name": "vv_app kann sich keine Rolle direkt eintragen (INSERT role_assignment denied)",
+      "ok": true
+    },
+    {
+      "name": "vv_app kann Rollen nicht direkt ändern (UPDATE denied)",
+      "ok": true
+    },
+    {
+      "name": "vv_app darf Freigaben nicht ausführen (m05_execute nur Worker)",
+      "ok": true
+    },
+    {
+      "name": "vv_app darf den Tagesjob nicht ausführen",
+      "ok": true
+    },
+    {
+      "name": "interne Lesefunktion nicht direkt aufrufbar",
+      "ok": true
+    },
+    {
+      "name": "keine M05/RBAC-Funktion für PUBLIC ausführbar",
+      "ok": true
+    },
+    {
+      "name": "Mandanten-Admin legt Vereins-Mitgliedsarten an (je mit System-Kategorie)",
+      "ok": true
+    },
+    {
+      "name": "Schriftführer darf keine Mitgliedsart anlegen (deny)",
+      "ok": true
+    },
+    {
+      "name": "Aging-up-Regel nur bei Kategorie jugend",
+      "ok": true
+    },
+    {
+      "name": "Regel-Versionen sind unveränderbar (append-only)",
+      "ok": true
+    },
+    {
+      "name": "keine rückwirkende Regel-Version",
+      "ok": true
+    },
+    {
+      "name": "neue Regel-Version (ab Zukunft) = Version 2",
+      "ok": true
+    },
+    {
+      "name": "Kündigungsstichtag korrekt (6 Fälle inkl. Monatsende/Quartal/Halbjahr)",
+      "ok": true
+    },
+    {
+      "name": "Schriftführer stellt Antrag (Periode beantragt)",
+      "ok": true
+    },
+    {
+      "name": "Trainer darf keinen Antrag stellen (deny)",
+      "ok": true
+    },
+    {
+      "name": "optimistische Nebenläufigkeit: veraltete Version abgelehnt",
+      "ok": true
+    },
+    {
+      "name": "Aufnahme -> aktiv",
+      "ok": true
+    },
+    {
+      "name": "Statusverlauf automatisch (append-only)",
+      "ok": true
+    },
+    {
+      "name": "jede Zustandsänderung erzeugt Audit-Einträge",
+      "ok": true
+    },
+    {
+      "name": "Outbox-Events in derselben Transaktion (applied + admitted)",
+      "ok": true
+    },
+    {
+      "name": "Outbox-Payload ohne Klartext-Personenbezug",
+      "ok": true
+    },
+    {
+      "name": "keine zweite offene Periode je Mitglied (AK-01)",
+      "ok": true
+    },
+    {
+      "name": "unerlaubter Übergang (aktiv -> Wiederaufnahme) abgewiesen",
+      "ok": true
+    },
+    {
+      "name": "DB-Automat: Beendigung ohne Freigabe-Kontext unmöglich (auch als Eigentümer)",
+      "ok": true
+    },
+    {
+      "name": "Statusverlauf append-only (UPDATE)",
+      "ok": true
+    },
+    {
+      "name": "Periode nicht physisch löschbar",
+      "ok": true
+    },
+    {
+      "name": "Statusverlauf TRUNCATE gesperrt",
+      "ok": true
+    },
+    {
+      "name": "Ruhen + Wiederaufnahme (einfache Aktion)",
+      "ok": true
+    },
+    {
+      "name": "Trainer darf keine Beendigung beantragen",
+      "ok": true
+    },
+    {
+      "name": "Antrag erzeugt NUR Freigabe-Objekt; Stichtag aus Regel (Frist 1 M., Jahresende)",
+      "ok": true
+    },
+    {
+      "name": "Freigabe-Objekt enthält nur den Parameter-Hash (Se-Parameter nur im geschützten Antrag)",
+      "ok": true
+    },
+    {
+      "name": "C-1: vv_app liest das Freigabe-Objekt nicht mehr direkt (keine Tabellenrechte)",
+      "ok": true
+    },
+    {
+      "name": "kein zweiter paralleler Beendigungsantrag",
+      "ok": true
+    },
+    {
+      "name": "Schriftführer (ohne Freigaberecht) kann nicht freigeben",
+      "ok": true
+    },
+    {
+      "name": "Ausführung ohne Freigabe verweigert",
+      "ok": true
+    },
+    {
+      "name": "Freigeber = app.actor (DB-seitig)",
+      "ok": true
+    },
+    {
+      "name": "Freigabe erzeugt Ausführungs-Event für den Worker",
+      "ok": true
+    },
+    {
+      "name": "Worker führt eingelöste Freigabe aus -> gekündigt (Stichtag in Zukunft)",
+      "ok": true
+    },
+    {
+      "name": "Replay der Ausführung = No-Op (idempotent)",
+      "ok": true
+    },
+    {
+      "name": "Freigabe ist verbraucht (zweiter Consume leer)",
+      "ok": true
+    },
+    {
+      "name": "Verlaufseintrag referenziert die Freigabe",
+      "ok": true
+    },
+    {
+      "name": "Selbst-Freigabe (Antragsteller = Freigeber) abgewiesen",
+      "ok": true
+    },
+    {
+      "name": "Parameter-Tausch nach Freigabe erkannt (Hash-Bindung) -> verweigert",
+      "ok": true
+    },
+    {
+      "name": "…und die Freigabe wurde dabei NICHT verbraucht (Rollback)",
+      "ok": true
+    },
+    {
+      "name": "Umschreiben des Hashes im Freigabe-Objekt erkannt -> verweigert",
+      "ok": true
+    },
+    {
+      "name": "S0-1/C-1: vv_app kann keine Freigabe direkt einfügen (kein INSERT-Recht)",
+      "ok": true
+    },
+    {
+      "name": "S0-1: direkt eingefügte Freigabe startet immer als pending (kein Fälschen von 'approved')",
+      "ok": true
+    },
+    {
+      "name": "S0-2/C-1: Antragsteller-Spoofing per Direkt-INSERT unmöglich (kein INSERT-Recht)",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'm05.execute' nicht in die Outbox schreiben",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'm05.membership.ended' nicht in die Outbox schreiben",
+      "ok": true
+    },
+    {
+      "name": "Event-Spoofing verweigert: vv_app kann 'basis02.role.assigned' nicht in die Outbox schreiben",
+      "ok": true
+    },
+    {
+      "name": "Freigabe ohne gebundenen M05-Antrag ist nicht ausführbar",
+      "ok": true
+    },
+    {
+      "name": "Freigeber ohne (weiterhin gültiges) Freigaberecht -> Ausführung verweigert",
+      "ok": true
+    },
+    {
+      "name": "Antrag nach Änderung der Periode = 'stale' (keine Ausführung)",
+      "ok": true
+    },
+    {
+      "name": "abgelaufene Freigabe -> 'expired', keine Wirkung",
+      "ok": true
+    },
+    {
+      "name": "abgelehnte Freigabe nicht ausführbar",
+      "ok": true
+    },
+    {
+      "name": "Schriftführer (ohne Se) kann keinen Ausschluss beantragen",
+      "ok": true
+    },
+    {
+      "name": "Ausschluss ohne Grundkategorie abgewiesen (kein Freitext)",
+      "ok": true
+    },
+    {
+      "name": "offene Freigaben nur für Freigabeberechtigte; Se-Details für Vorstand sichtbar",
+      "ok": true
+    },
+    {
+      "name": "Ausschluss wirkt sofort -> beendet, Aufbewahrung 7 J. (konservativ)",
+      "ok": true
+    },
+    {
+      "name": "Se-Ausschlussgrund: Vorstand/Obmann/Kinderschutz sehen ihn",
+      "ok": true
+    },
+    {
+      "name": "Se-Ausschlussgrund: Schriftführer/Kassaprüfer sehen ihn NICHT (Spalte leer)",
+      "ok": true
+    },
+    {
+      "name": "Trainer (U18) sieht nur eigenes Team: Jonas ja, Kampfmannschaft nein",
+      "ok": true
+    },
+    {
+      "name": "Trainer sieht Jonas mit S (Mitgliedsnummer)",
+      "ok": true
+    },
+    {
+      "name": "Mitglied/Spieler: eigene Daten voll (S), Teamkollege nur Ö",
+      "ok": true
+    },
+    {
+      "name": "unbekannter Actor (ohne Principal) -> deny",
+      "ok": true
+    },
+    {
+      "name": "ohne app.actor -> deny",
+      "ok": true
+    },
+    {
+      "name": "ohne Mandantenkontext -> deny",
+      "ok": true
+    },
+    {
+      "name": "Export ohne ausreichende Zweckangabe abgewiesen",
+      "ok": true
+    },
+    {
+      "name": "Trainer darf nicht exportieren",
+      "ok": true
+    },
+    {
+      "name": "Kassaprüfer exportiert mit Zweck; Export enthält nie Se",
+      "ok": true
+    },
+    {
+      "name": "Export mit Zweck protokolliert",
+      "ok": true
+    },
+    {
+      "name": "Tagesjob: gekündigt -> beendet am Stichtag",
+      "ok": true
+    },
+    {
+      "name": "Tagesjob: beendet -> gesperrt (Sperr-Nachlauf 0 Tage)",
+      "ok": true
+    },
+    {
+      "name": "Tagesjob idempotent (zweiter Lauf ändert nichts)",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Periode nicht in normaler Liste",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Periode auch nicht in der Detailansicht (nur mit Zweck über Liste/Export)",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Periode mit Zweckangabe für berechtigte Rolle sichtbar",
+      "ok": true
+    },
+    {
+      "name": "gesperrte Daten nur mit Zweckangabe",
+      "ok": true
+    },
+    {
+      "name": "Fristablauf -> Anonymisierungs-ANTRAG (nicht Ausführung)",
+      "ok": true
+    },
+    {
+      "name": "kein doppelter Anonymisierungsantrag",
+      "ok": true
+    },
+    {
+      "name": "Anonymisierung: Personenbezug + Gründe entfernt, Daten auf Jahr gekürzt",
+      "ok": true
+    },
+    {
+      "name": "anonymisierte Periode endgültig",
+      "ok": true
+    },
+    {
+      "name": "Kündigung vor Stichtag zurückgenommen -> aktiv, Beendigungsdaten leer",
+      "ok": true
+    },
+    {
+      "name": "Aging-up: genau EIN Vorschlag je Periode × Stichtag (idempotent)",
+      "ok": true
+    },
+    {
+      "name": "ohne Bestätigung ändert sich die Art NICHT",
+      "ok": true
+    },
+    {
+      "name": "Jugend ohne Geburtsdatum -> Hinweis-Event statt stiller Annahme",
+      "ok": true
+    },
+    {
+      "name": "Trainer kann Aging-up nicht bestätigen",
+      "ok": true
+    },
+    {
+      "name": "bestätigter Vorschlag -> Artwechsel zum Stichtag (Quelle aging_up)",
+      "ok": true
+    },
+    {
+      "name": "Aufbewahrung nie unter 7 J. konfigurierbar (P50-9)",
+      "ok": true
+    },
+    {
+      "name": "SoD-Kern: Kassier -> Kassaprüfer blockiert (Ergebnis statt Fehler)",
+      "ok": true
+    },
+    {
+      "name": "versuchte SoD-Verletzung ist protokolliert",
+      "ok": true
+    },
+    {
+      "name": "SoD-Kern: DB-Trigger blockt auch direkten Eintrag (kein Override)",
+      "ok": true
+    },
+    {
+      "name": "Selbst-Zuweisung verboten",
+      "ok": true
+    },
+    {
+      "name": "Obmann (ohne Zuweisungsrecht) kann keine Rollen vergeben",
+      "ok": true
+    },
+    {
+      "name": "Mandanten-Admin vergibt Rolle an Scope-Knoten",
+      "ok": true
+    },
+    {
+      "name": "bestehende Zuweisung nicht umdeutbar (nur Widerruf)",
+      "ok": true
+    },
+    {
+      "name": "Mandant B sieht keine Mitglieder von A",
+      "ok": true
+    },
+    {
+      "name": "Actor aus A ist in B unbekannt (deny)",
+      "ok": true
+    },
+    {
+      "name": "Mandant B kann Periode aus A nicht verändern",
+      "ok": true
+    },
+    {
+      "name": "zusammengesetzter FK: kein Mitglied auf Person eines fremden Mandanten",
+      "ok": true
+    },
+    {
+      "name": "Worker im fremden Mandanten findet die Freigabe nicht",
+      "ok": true
+    },
+    {
+      "name": "Trainer darf keinen Import beantragen",
+      "ok": true
+    },
+    {
+      "name": "Import ohne Freigabe verweigert",
+      "ok": true
+    },
+    {
+      "name": "Import-Selbstfreigabe/ohne Recht abgewiesen",
+      "ok": true
+    },
+    {
+      "name": "G-1: freigegebener Import erzeugt Ereignis m05.import.approved für den Worker",
+      "ok": true
+    },
+    {
+      "name": "Import mit anderen als den freigegebenen Zeilen verweigert (Hash)",
+      "ok": true
+    },
+    {
+      "name": "Import: 2 neu, Konflikte gemeldet statt übernommen",
+      "ok": true
+    },
+    {
+      "name": "Import-Report ohne Klartext-Personenbezug",
+      "ok": true
+    },
+    {
+      "name": "gleicher Batch erneut = No-Op",
+      "ok": true
+    },
+    {
+      "name": "Import: Antragsteller kann nicht selbst freigeben",
+      "ok": true
+    },
+    {
+      "name": "neuer Batch mit gleichen Zeilen: idempotent (alles unverändert)",
+      "ok": true
+    },
+    {
+      "name": "importierte ausgetretene Mitgliedschaft wird gesperrt (Art. 18)",
+      "ok": true
+    },
+    {
+      "name": "G-2: m05_import_apply ohne EXCEPTION-Block (kein Savepoint je Zeile)",
+      "ok": true
+    },
+    {
+      "name": "G-2: 3.005-Zeilen-Batch in einer Transaktion ohne Savepoints (3.000 neu, ungültige Zeilen gemeldet)",
+      "ok": true
+    },
+    {
+      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (3.7 s)",
+      "ok": true
+    },
+    {
+      "name": "G-3: Ablehnung verlängert Aufbewahrung um 12 Monate (Legal Hold), kein neuer Antrag am Folgetag",
+      "ok": true
+    },
+    {
+      "name": "G-3: Legal Hold protokolliert",
+      "ok": true
+    },
+    {
+      "name": "G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag",
+      "ok": true
+    },
+    {
+      "name": "R2/M-1: Legal Hold erzeugt genau EIN Outbox-Ereignis (auch bei direkter Ablehnung), ohne Personenbezug",
+      "ok": true
+    },
+    {
+      "name": "R2/M-2: zwei parallele Tagesläufe enden beide fehlerfrei, genau EIN Anonymisierungs-Antrag",
+      "ok": true
+    },
+    {
+      "name": "R2/N-1: Import-Batch kann keine Freigabe eines fremden Mandanten referenzieren (auch als Eigentümer)",
+      "ok": true
+    },
+    {
+      "name": "R2/N-1: beide Freigabe-Fremdschlüssel sind zusammengesetzt (tenant_id, approval_id)",
+      "ok": true
+    },
+    {
+      "name": "C-1: vv_app kann vv_decide_approval nicht direkt aufrufen (nur über Einmal-Ticket-Befehle)",
+      "ok": true
+    },
+    {
+      "name": "R4: Kassier (ohne Freigaberecht) kann M05-Antrag auch direkt über vv_decide_approval nicht freigeben",
+      "ok": true
+    },
+    {
+      "name": "R4: auch Ablehnen verlangt das Freigaberecht",
+      "ok": true
+    },
+    {
+      "name": "R7: Team-Trainer hat Recht 'irgendwo', aber NICHT an der Vereinswurzel",
+      "ok": true
+    },
+    {
+      "name": "R7: Obmann hat Wurzelrecht",
+      "ok": true
+    },
+    {
+      "name": "Audit-Hash-Kette von Mandant A vollständig verifiziert (kein Bruch, kein Fork)",
+      "ok": true
+    },
+    {
+      "name": "M05-Audit-Payloads ohne Klartext-Namen/Nummern",
+      "ok": true
+    }
+  ]
+}

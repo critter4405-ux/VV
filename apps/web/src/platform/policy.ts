@@ -6,7 +6,7 @@
 //  1. HIER (App): grobe Vorprüfung „hält der verifizierte Actor dieses Recht überhaupt?" —
 //     jede Aktion muss durch diesen Punkt (validator-erzwungen, ADR-09).
 //  2. In der DB-Fachfunktion: feingranulare Prüfung am Objekt (Scope der Ziel-Person, Feldsicht),
-//     mit demselben transaktionsgebundenen app.actor. Selbst ein App-Fehler öffnet also nichts.
+//     mit demselben, aus dem Ticket GEPRÜFTEN Akteur (C-1). Selbst eine übernommene App öffnet also nichts.
 // Fail-closed: fehlender Kontext, unbekannte Ressource oder DB-Fehler => verweigert.
 import type { Pool } from "pg";
 import { pool as defaultPool } from "../db.ts";
@@ -21,6 +21,7 @@ export type DataClass = "Oe" | "S" | "Se" | "F-Buch" | "F-Bank" | "A9";
 export interface PolicyRequest {
   tenantId: string;
   actor: string;
+  ticket: string;            // C-1: signiertes Ticket — die DB setzt Mandant/Akteur daraus (nie die App)
   resource: string;
   action: Action;
   scopeNode: string;
@@ -45,8 +46,8 @@ export interface PolicyDeps { pool: Pick<Pool, "connect"> }
 
 export async function checkPolicy(req: PolicyRequest, deps: PolicyDeps = { pool: defaultPool }): Promise<PolicyDecision> {
   const requiresApproval = BINDING.includes(req.action);
-  if (!req.tenantId || !req.actor || !req.scopeNode) {
-    return { allowed: false, reason: "deny-by-default: fehlender Tenant/Actor/Scope", requiresApproval };
+  if (!req.tenantId || !req.actor || !req.scopeNode || !req.ticket) {
+    return { allowed: false, reason: "deny-by-default: fehlender Tenant/Actor/Scope/Ticket", requiresApproval };
   }
   if (req.actor.startsWith("system:")) {
     return { allowed: false, reason: "deny-by-default: Systemakteure handeln nicht über die Web-API", requiresApproval };
@@ -76,7 +77,7 @@ export async function checkPolicy(req: PolicyRequest, deps: PolicyDeps = { pool:
   try {
     const client = await deps.pool.connect();
     try {
-      const allowed = await withTenant(client, req.tenantId, async () => {
+      const allowed = await withTenant(client, req.ticket, async () => {
         const { rows } = await client.query(sql, params);
         const ok = rows[0]?.allowed === true;
         if (!ok) {
@@ -86,7 +87,7 @@ export async function checkPolicy(req: PolicyRequest, deps: PolicyDeps = { pool:
           });
         }
         return ok;
-      }, req.actor);
+      });
       return {
         allowed,
         reason: allowed ? "rbac: Recht vorhanden (Objektprüfung folgt in der DB)"

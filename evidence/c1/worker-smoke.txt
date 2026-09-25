@@ -1,0 +1,7 @@
+== Worker-Start-Probe ==
+  [OK]  vv_worker ohne Datenbank-CREATE-Recht (Least Privilege)
+  [OK]  Worker startet und läuft (Abbruch nach 20 s gewollt)
+  [OK]  Queues m05.daily + reminder.dispatch angelegt
+  [OK]  Tageszeitplan m05.daily 02:15 Europe/Vienna
+  [OK]  pgboss-Tabellen gehören vv_worker
+Worker-Start-Probe grün.

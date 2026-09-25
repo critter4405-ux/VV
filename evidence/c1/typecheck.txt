@@ -1,0 +1,3 @@
+tsc web rc=0
+tsc worker rc=0
+tsc ticket rc=0

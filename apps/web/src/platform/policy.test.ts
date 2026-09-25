@@ -19,12 +19,12 @@ function fakePool(allowed: boolean | "throw") {
   return { log, pool: { connect: async () => client } as any };
 }
 
-const base = { tenantId: "00000000-0000-0000-0000-0000000000aa", actor: "sub-x", resource: "membership",
+const base = { tenantId: "00000000-0000-0000-0000-0000000000aa", actor: "sub-x", ticket: "v1.k1.test.sig", resource: "membership",
                action: "read" as const, scopeNode: "verein", dataClass: "S" as const };
 
-test("ohne Tenant/Actor/Scope: deny ohne DB-Zugriff", async () => {
+test("ohne Tenant/Actor/Scope/Ticket: deny ohne DB-Zugriff", async () => {
   const f = fakePool(true);
-  for (const k of ["tenantId", "actor", "scopeNode"] as const) {
+  for (const k of ["tenantId", "actor", "scopeNode", "ticket"] as const) {
     const d = await checkPolicy({ ...base, [k]: "" }, { pool: f.pool });
     assert.equal(d.allowed, false);
   }
@@ -37,13 +37,13 @@ test("Systemakteur und unbekannte Ressource: deny", async () => {
   assert.equal((await checkPolicy({ ...base, resource: "membershipp" }, { pool: f.pool })).allowed, false);
 });
 
-test("DB entscheidet: erlaubt -> allowed, in Transaktion mit Tenant + Actor (Scope any)", async () => {
+test("DB entscheidet: erlaubt -> allowed, in Transaktion mit GEPRÜFTEM Ticket-Kontext (C-1)", async () => {
   const f = fakePool(true);
   const d = await checkPolicy(base, { pool: f.pool });
   assert.equal(d.allowed, true);
   assert.ok(f.log[0]!.startsWith("BEGIN"));
-  assert.ok(f.log.some((l) => l.includes("app.tenant_id")));
-  assert.ok(f.log.some((l) => l.includes("app.actor") && l.includes("sub-x")));
+  assert.ok(f.log.some((l) => l.startsWith("SELECT vv_set_context") && l.includes(base.ticket)), "Kontext nur per Ticket");
+  assert.ok(!f.log.some((l) => /set_config|app\.tenant_id|app\.actor/.test(l)), "keine frei setzbaren GUCs mehr");
   assert.ok(f.log.includes("COMMIT"));
   assert.equal(f.log.at(-1), "release");
 });

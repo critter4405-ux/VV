@@ -45,14 +45,27 @@ def conn(user: str) -> psycopg.Connection:
 APP, WK, BOOT = conn("vv_app"), conn("vv_worker"), conn("vv_bootstrap")
 
 
-def run(c, sql, params=(), tenant=AA, actor=None, extra=None):
-    """Führt SQL in EINER Transaktion mit Tenant-/Actor-Kontext aus (wie withTenant)."""
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vv_ticket  # noqa: E402  (C-1: Tickets wie der Ticket-Dienst, Wegwerf-Schlüssel je Lauf)
+
+
+def run(c, sql, params=(), tenant=AA, actor=None, extra=None, role=None):
+    """Führt SQL in EINER Transaktion mit GEPRÜFTEM Kontext aus (C-1, wie withTenant):
+    vv_app  -> signiertes Ticket (vv_set_context), nur wenn Tenant UND Actor gegeben (sonst kein Kontext)
+    vv_worker -> Systemkontext (vv_worker_context), fester Akteur system:worker
+    Bootstrap -> Betreiber-Kontext (vv_bootstrap_context); role= wechselt danach die Rolle (z. B. vv_definer)."""
     with c.transaction():
         cur = c.cursor()
-        if tenant:
-            cur.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant,))
-        if actor:
-            cur.execute("SELECT set_config('app.actor', %s, true)", (actor,))
+        if c is APP:
+            if tenant and actor:
+                cur.execute("SELECT vv_set_context(%s)", (vv_ticket.mint(tenant, actor),))
+        elif c is WK:
+            if tenant:
+                cur.execute("SELECT vv_worker_context(%s)", (tenant,))
+        elif tenant:
+            cur.execute("SELECT vv_bootstrap_context(%s, %s)", (tenant, actor or "system:test"))
+        if role:
+            cur.execute(f"SET LOCAL ROLE {role}")
         for k, v in (extra or {}).items():
             cur.execute("SELECT set_config(%s, %s, true)", (k, v))
         cur.execute(sql, params)
@@ -60,6 +73,12 @@ def run(c, sql, params=(), tenant=AA, actor=None, extra=None):
             return None
         # UUIDs als Text (Parameter-Vergleiche mit ->> sind text)
         return [tuple(str(v) if isinstance(v, uuid.UUID) else v for v in r) for r in cur.fetchall()]
+
+
+def run_definer(sql, params=(), actor=None, tenant=AA):
+    """Stage-0-Kernfunktionen (z. B. vv_decide_approval) sind seit C-1 NICHT mehr für vv_app freigegeben;
+    ihre Logik (SoD, Freigeberrecht, Attestation) wird über die Definer-Rolle mit Betreiber-Kontext geprüft."""
+    return run(BOOT, sql, params, tenant=tenant, actor=actor, role="vv_definer")
 
 
 def one(*a, **kw):
@@ -244,9 +263,11 @@ def main() -> int:
     ctx = one(BOOT, "SELECT payload FROM m05_approval_request WHERE approval_id=%s", (appr,))
     check("Antrag erzeugt NUR Freigabe-Objekt; Stichtag aus Regel (Frist 1 M., Jahresende)",
           status(per_kurt) == "aktiv" and ctx["effective_date"] == str(exp_eff), str(ctx))
-    actx = one(APP, "SELECT context FROM approval WHERE id=%s", (appr,), actor=SCHRIFT)
-    check("für vv_app lesbares Freigabe-Objekt enthält nur den Parameter-Hash", set(actx) == {"payload_sha256", "effect"},
-          str(actx))
+    actx = one(BOOT, "SELECT context FROM approval WHERE id=%s", (appr,))
+    check("Freigabe-Objekt enthält nur den Parameter-Hash (Se-Parameter nur im geschützten Antrag)",
+          set(actx) == {"payload_sha256", "effect"}, str(actx))
+    e = err(lambda: run(APP, "SELECT context FROM approval WHERE id=%s", (appr,), actor=SCHRIFT))
+    check("C-1: vv_app liest das Freigabe-Objekt nicht mehr direkt (keine Tabellenrechte)", "permission denied" in e, e)
     e = err(lambda: run(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),NULL,NULL,NULL,NULL,%s)",
                         (per_kurt, version(per_kurt)), actor=OBMANN))
     check("kein zweiter paralleler Beendigungsantrag", "bereits ein Antrag offen" in e, e)
@@ -289,20 +310,26 @@ def main() -> int:
     run(BOOT, "UPDATE approval SET context = jsonb_set(context,'{payload_sha256}', to_jsonb(%s::text)) WHERE id=%s",
         (orig, appr_f))
 
-    # Gefälschte Freigabe direkt eingefügt (S0-1/S0-2) + nicht über m05_request_* entstanden
-    forged = one(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,builder_model,status,approved_by,decided_at) "
-                      "VALUES (%s,'legal','m05.membership.terminate',%s,%s,'human:manuell','approved','sub-vorstand-aa',now()) RETURNING id",
-                 (AA, per_jonas, SCHRIFT), actor=SCHRIFT)
+    # Gefälschte Freigabe direkt eingefügt (S0-1/S0-2) + nicht über m05_request_* entstanden.
+    # C-1: vv_app hat KEIN INSERT mehr auf approval/outbox (stärker als die frühere Normalisierung);
+    # die Normalisierung (Trigger) wird zusätzlich über die Definer-Rolle nachgewiesen.
+    e = err(lambda: run(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,builder_model,status,approved_by,decided_at) "
+                             "VALUES (%s,'legal','m05.membership.terminate',%s,%s,'human:manuell','approved','sub-vorstand-aa',now())",
+                        (AA, per_jonas, SCHRIFT), actor=SCHRIFT))
+    check("S0-1/C-1: vv_app kann keine Freigabe direkt einfügen (kein INSERT-Recht)", "permission denied" in e, e)
+    forged = one(BOOT, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by,builder_model,status,approved_by,decided_at) "
+                       "VALUES (%s,'legal','m05.membership.terminate',%s,%s,'human:manuell','approved','sub-vorstand-aa',now()) RETURNING id",
+                 (AA, per_jonas, SCHRIFT), actor=SCHRIFT, role="vv_definer")
     st = one(BOOT, "SELECT status||'/'||coalesce(approved_by,'-') FROM approval WHERE id=%s", (forged,))
     check("S0-1: direkt eingefügte Freigabe startet immer als pending (kein Fälschen von 'approved')", st == "pending/-", st)
     e = err(lambda: run(APP, "INSERT INTO approval (tenant_id,kind,effect_id,subject_ref,requested_by) "
                              "VALUES (%s,'legal','m05.membership.terminate',%s,'jemand-anderes')", (AA, per_jonas), actor=SCHRIFT))
-    check("S0-2: Antragsteller-Spoofing (requested_by ≠ app.actor) abgewiesen", "Spoofing" in e, e)
+    check("S0-2/C-1: Antragsteller-Spoofing per Direkt-INSERT unmöglich (kein INSERT-Recht)", "permission denied" in e, e)
     for topic in ("m05.execute", "m05.membership.ended", "basis02.role.assigned"):
         e = err(lambda topic=topic: run(APP, "INSERT INTO outbox (tenant_id, topic, payload, idempotency_key) "
                                              "VALUES (%s,%s,'{}',%s)", (AA, topic, f"spoof-{topic}-{RUN}"), actor=SCHRIFT))
-        check(f"Event-Spoofing verweigert: vv_app kann '{topic}' nicht in die Outbox schreiben", "reserviert" in e, e)
-    run(APP, "SELECT vv_decide_approval(%s,'approved','gpt-5.3-codex')", (forged,), actor=VORSTAND)  # direkt, attestiert
+        check(f"Event-Spoofing verweigert: vv_app kann '{topic}' nicht in die Outbox schreiben", "permission denied" in e, e)
+    run_definer("SELECT vv_decide_approval(%s,'approved','gpt-5.3-codex')", (forged,), actor=VORSTAND)  # direkt, attestiert
     e = err(lambda: execute(forged))
     check("Freigabe ohne gebundenen M05-Antrag ist nicht ausführbar", "kein geprüfter M05-Antrag" in e, e)
 
@@ -613,7 +640,7 @@ def main() -> int:
     per_h2 = locked_due_period("HoldZwei")
     ap_h2 = one(BOOT, "SELECT approval_id FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize' "
                       "AND closed_at IS NULL", (per_h2,))
-    run(APP, "SELECT vv_decide_approval(%s,'rejected')", (ap_h2,), actor=VORSTAND)   # am m05_decide vorbei
+    run_definer("SELECT vv_decide_approval(%s,'rejected')", (ap_h2,), actor=VORSTAND)   # am m05_decide vorbei
     j_h2 = one(WK, "SELECT m05_job_daily()")
     n_req2 = one(BOOT, "SELECT count(*) FROM m05_approval_request WHERE period_id=%s AND effect_id='m05.membership.anonymize'",
                  (per_h2,))
@@ -639,7 +666,7 @@ def main() -> int:
     backdate(per_p, retention_until=today)                             # fällig, noch KEIN Antrag
     wa = psycopg.connect(host=HOST, dbname="vv", user="vv_worker", password=PW)   # Lauf A: offene Transaktion
     ca = wa.cursor()
-    ca.execute("SELECT set_config('app.tenant_id', %s, true)", (AA,))
+    ca.execute("SELECT vv_worker_context(%s)", (AA,))
     ca.execute("SELECT m05_job_daily()")
     ja = ca.fetchone()[0]
     timer = threading.Timer(3.0, wa.commit)                            # A hält Sperren noch ~3 s
@@ -673,10 +700,13 @@ def main() -> int:
     # ---------------------------------------------------------------- R4/R7 im M05-Kontext
     ap_r4 = one(APP, "SELECT m05_request_termination(%s,'ausgetreten',m05_today(),NULL,NULL,NULL,NULL,%s)",
                 (per_w, version(per_w)), actor=SCHRIFT)
-    e = err(lambda: run(APP, "SELECT vv_decide_approval(%s,'approved')", (ap_r4,), actor=KASSIER))
+    e = err(lambda: run(APP, "SELECT vv_decide_approval(%s,'approved')", (ap_r4,), actor=VORSTAND))
+    check("C-1: vv_app kann vv_decide_approval nicht direkt aufrufen (nur über Einmal-Ticket-Befehle)",
+          "permission denied" in e, e)
+    e = err(lambda: run_definer("SELECT vv_decide_approval(%s,'approved')", (ap_r4,), actor=KASSIER))
     check("R4: Kassier (ohne Freigaberecht) kann M05-Antrag auch direkt über vv_decide_approval nicht freigeben",
           "kein Recht" in e, e)
-    e = err(lambda: run(APP, "SELECT vv_decide_approval(%s,'rejected')", (ap_r4,), actor=TRAINER))
+    e = err(lambda: run_definer("SELECT vv_decide_approval(%s,'rejected')", (ap_r4,), actor=TRAINER))
     check("R4: auch Ablehnen verlangt das Freigaberecht", "kein Recht" in e, e)
     tr_root = one(APP, "SELECT vv_authorize('membership','read','S',NULL,NULL)", actor=TRAINER)
     tr_any = one(APP, "SELECT vv_policy_any('membership','read','S')", actor=TRAINER)
