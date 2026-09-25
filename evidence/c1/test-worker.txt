@@ -6,69 +6,69 @@ TAP version 13
 # Subtest: bindender Effekt ist server-seitig klassifiziert (Registry, nicht Aufrufer)
 ok 1 - bindender Effekt ist server-seitig klassifiziert (Registry, nicht Aufrufer)
   ---
-  duration_ms: 0.775014
+  duration_ms: 0.674116
   type: 'test'
   ...
 # Subtest: ADVERSARIAL a) Umetikettieren erreicht die Zahlungs-Senke NICHT
 ok 2 - ADVERSARIAL a) Umetikettieren erreicht die Zahlungs-Senke NICHT
   ---
-  duration_ms: 0.579464
+  duration_ms: 0.659289
   type: 'test'
   ...
 # Subtest: ADVERSARIAL R2/B-03) kein Handler vom Aufrufer: nicht-bindende ID kann keine Senke ausführen
 ok 3 - ADVERSARIAL R2/B-03) kein Handler vom Aufrufer: nicht-bindende ID kann keine Senke ausführen
   ---
-  duration_ms: 0.367746
+  duration_ms: 0.445412
   type: 'test'
   ...
 # Subtest: R2) DB-atomare M05-Effekte sind über den TS-Executor unerreichbar
 ok 4 - R2) DB-atomare M05-Effekte sind über den TS-Executor unerreichbar
   ---
-  duration_ms: 0.183243
+  duration_ms: 0.223478
   type: 'test'
   ...
 # Subtest: R3) Modell-Vorschlag ohne Fremdfamilien-Attestation wird nicht eingelöst
 ok 5 - R3) Modell-Vorschlag ohne Fremdfamilien-Attestation wird nicht eingelöst
   ---
-  duration_ms: 0.685604
+  duration_ms: 0.847717
   type: 'test'
   ...
 # Subtest: ADVERSARIAL b) erfundene Freigabe ohne echten DB-Eintrag wird abgewiesen
 ok 6 - ADVERSARIAL b) erfundene Freigabe ohne echten DB-Eintrag wird abgewiesen
   ---
-  duration_ms: 0.279477
+  duration_ms: 0.2536
   type: 'test'
   ...
 # Subtest: ADVERSARIAL b2) Reviewer aus gleicher Modellfamilie zählt nicht
 ok 7 - ADVERSARIAL b2) Reviewer aus gleicher Modellfamilie zählt nicht
   ---
-  duration_ms: 0.148828
+  duration_ms: 0.196834
   type: 'test'
   ...
 # Subtest: ADVERSARIAL c) Token/Freigabe ist genau EINMAL einlösbar (Replay ROT)
 ok 8 - ADVERSARIAL c) Token/Freigabe ist genau EINMAL einlösbar (Replay ROT)
   ---
-  duration_ms: 0.185605
+  duration_ms: 0.209644
   type: 'test'
   ...
 # Subtest: abgelaufene Freigabe wird abgewiesen
 ok 9 - abgelaufene Freigabe wird abgewiesen
   ---
-  duration_ms: 0.302593
+  duration_ms: 0.29052
   type: 'test'
   ...
 # Subtest: unbekannter Effekt: fail-closed; nicht-bindend nur wenn registriert
 ok 10 - unbekannter Effekt: fail-closed; nicht-bindend nur wenn registriert
   ---
-  duration_ms: 0.498132
+  duration_ms: 0.437461
   type: 'test'
   ...
-# [vv-worker] m05.execute a3004fb5-93ec-47bc-80dd-e7c788483680: {"ok":true,"effect":"m05.membership.terminate","outcome":"executed"}
-# [vv-worker] m05.execute a3004fb5-93ec-47bc-80dd-e7c788483680: {"ok":true,"noop":true,"outcome":"executed"}
+# [vv-worker] m05.execute 107a834f-9724-493a-aa2c-ad4046ed4a72: {"ok":true,"effect":"m05.membership.terminate","outcome":"executed"}
+# [vv-worker] m05.execute 107a834f-9724-493a-aa2c-ad4046ed4a72: {"ok":true,"noop":true,"outcome":"executed"}
 # Subtest: Freigabe wird über Outbox + Worker genau einmal ausgeführt
 ok 11 - Freigabe wird über Outbox + Worker genau einmal ausgeführt
   ---
-  duration_ms: 7989.08275
+  duration_ms: 5200.1306
   type: 'test'
   ...
 # [vv-worker] m05.execute 11111111-2222-3333-4444-555555555555: {"ok":true}
@@ -76,43 +76,43 @@ ok 11 - Freigabe wird über Outbox + Worker genau einmal ausgeführt
 # Subtest: fremde Topics werden nicht angefasst
 ok 12 - fremde Topics werden nicht angefasst
   ---
-  duration_ms: 0.825247
+  duration_ms: 0.697428
   type: 'test'
   ...
 # Subtest: ungültige approval_id / Tenant -> fail-closed, kein DB-Zugriff
 ok 13 - ungültige approval_id / Tenant -> fail-closed, kein DB-Zugriff
   ---
-  duration_ms: 0.605408
+  duration_ms: 0.455884
   type: 'test'
   ...
 # Subtest: Ausführung in Transaktion mit Tenant-Kontext; Fehler -> ROLLBACK + Wurf (Retry/DLQ)
 ok 14 - Ausführung in Transaktion mit Tenant-Kontext; Fehler -> ROLLBACK + Wurf (Retry/DLQ)
   ---
-  duration_ms: 0.91839
+  duration_ms: 1.348269
   type: 'test'
   ...
 # Subtest: Tagesjob läuft je Mandant
 ok 15 - Tagesjob läuft je Mandant
   ---
-  duration_ms: 1.438958
+  duration_ms: 1.384834
   type: 'test'
   ...
 # Subtest: G-1) m05.import.approved ohne Q05-Zeilenquelle: sichtbarer Fehler (Retry/DLQ), keine Quittung
 ok 16 - G-1) m05.import.approved ohne Q05-Zeilenquelle: sichtbarer Fehler (Retry/DLQ), keine Quittung
   ---
-  duration_ms: 0.484824
+  duration_ms: 0.382978
   type: 'test'
   ...
 # Subtest: G-1) m05.import.approved mit Zeilenquelle: m05_import_apply in Tenant-Transaktion
 ok 17 - G-1) m05.import.approved mit Zeilenquelle: m05_import_apply in Tenant-Transaktion
   ---
-  duration_ms: 0.339151
+  duration_ms: 0.617269
   type: 'test'
   ...
 # Subtest: R5) Consumer-Topics sind explizit (Worker claimt nur diese)
 ok 18 - R5) Consumer-Topics sind explizit (Worker claimt nur diese)
   ---
-  duration_ms: 0.196722
+  duration_ms: 0.150284
   type: 'test'
   ...
 1..18
@@ -123,4 +123,4 @@ ok 18 - R5) Consumer-Topics sind explizit (Worker claimt nur diese)
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 8689.111915
+# duration_ms 5898.838558

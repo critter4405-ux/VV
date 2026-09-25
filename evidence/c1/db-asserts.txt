@@ -29,7 +29,7 @@
   [OK]  Audit: TRUNCATE für Eigentümer blockiert
   [OK]  H2/H3: Hard-Crash-Giftelement in DLQ (5/true)
   [OK]  H3: in-flight 5. Versuch NICHT fälschlich getötet
-  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (37ms)
+  [OK]  Reaper SKIP LOCKED: gelockte tote Zeile übersprungen, kein Blockieren (41ms)
   [OK]  Reaper: nach Lock-Freigabe tote Zeile korrekt in DLQ
   [OK]  Kein Doppelzustand: Spät-Erfolg räumt dead_at ab (tot=true -> clean/done=true/true)
   [OK]  R8: Fencing — alter Lease quittiert/verlängert/scheitert nicht, neuer Lease quittiert (f/f/f/t)
@@ -37,7 +37,7 @@
   [OK]  R5: Claim ohne Topic-Liste claimt nichts (deny-by-default)
   [OK]  R2/H-2: nicht registriertes Topic trotz expliziter Liste nicht claimbar (0, 0/true)
   [OK]  R2/H-2: Worker kann das Consumer-Register nicht erweitern
-== M05/BASIS-02 DB-Gegenproben (Lauf e9c39c) ==
+== M05/BASIS-02 DB-Gegenproben (Lauf 10bfaf) ==
   [OK ] Migrationen 0006–0013 idempotent (erneuter Lauf fehlerfrei)
   [OK ] vv_definer NOSUPERUSER + NOBYPASSRLS (RLS gilt in Definer-Funktionen)
   [OK ] vv_app hat keinen Direktzugriff auf member
@@ -163,7 +163,7 @@
   [OK ] importierte ausgetretene Mitgliedschaft wird gesperrt (Art. 18)
   [OK ] G-2: m05_import_apply ohne EXCEPTION-Block (kein Savepoint je Zeile)
   [OK ] G-2: 3.005-Zeilen-Batch in einer Transaktion ohne Savepoints (3.000 neu, ungültige Zeilen gemeldet)
-  [OK ] G-2: Laufzeit 3.005 Zeilen < 60 s (3.7 s)
+  [OK ] G-2: Laufzeit 3.005 Zeilen < 60 s (2.3 s)
   [OK ] G-3: Ablehnung verlängert Aufbewahrung um 12 Monate (Legal Hold), kein neuer Antrag am Folgetag
   [OK ] G-3: Legal Hold protokolliert
   [OK ] G-3: auch direkte Ablehnung (vv_decide_approval) führt zum Legal Hold statt Dauer-Antrag

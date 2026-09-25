@@ -6,139 +6,139 @@ TAP version 13
 # Subtest: M05-API end-to-end (echte DB)
 ok 1 - M05-API end-to-end (echte DB)
   ---
-  duration_ms: 16533.771746
+  duration_ms: 10215.635304
   type: 'test'
   ...
 # Subtest: UUID: gültig/ungültig
 ok 2 - UUID: gültig/ungültig
   ---
-  duration_ms: 1.108311
+  duration_ms: 1.08485
   type: 'test'
   ...
 # Subtest: Datum: echtes Kalenderdatum, kein 30. Februar, kein Freitext
 ok 3 - Datum: echtes Kalenderdatum, kein 30. Februar, kein Freitext
   ---
-  duration_ms: 0.352501
+  duration_ms: 0.366457
   type: 'test'
   ...
 # Subtest: Kündigung: Enum-Beendigungsart, Katalog-Codes statt Freitext
 ok 4 - Kündigung: Enum-Beendigungsart, Katalog-Codes statt Freitext
   ---
-  duration_ms: 0.5003
+  duration_ms: 0.494125
   type: 'test'
   ...
 # Subtest: Entscheidung nur approved/rejected
 ok 5 - Entscheidung nur approved/rejected
   ---
-  duration_ms: 1.217246
+  duration_ms: 1.106087
   type: 'test'
   ...
 # Subtest: Freigeber kann NICHT über den Body gesetzt werden (Feld wird ignoriert)
 ok 6 - Freigeber kann NICHT über den Body gesetzt werden (Feld wird ignoriert)
   ---
-  duration_ms: 0.113361
+  duration_ms: 0.098855
   type: 'test'
   ...
 # Subtest: Mitgliedsart: Aging-up nur mit Folgeart; Codes/Namen streng
 ok 7 - Mitgliedsart: Aging-up nur mit Folgeart; Codes/Namen streng
   ---
-  duration_ms: 0.592759
+  duration_ms: 0.638474
   type: 'test'
   ...
 # Subtest: Aufbewahrung nie unter 7 Jahre (P50-9)
 ok 8 - Aufbewahrung nie unter 7 Jahre (P50-9)
   ---
-  duration_ms: 0.189985
+  duration_ms: 0.195078
   type: 'test'
   ...
 # Subtest: Export: Zweckangabe Pflicht, ohne Steuerzeichen
 ok 9 - Export: Zweckangabe Pflicht, ohne Steuerzeichen
   ---
-  duration_ms: 0.211567
+  duration_ms: 0.20516
   type: 'test'
   ...
 # Subtest: Import-Antrag: SHA-256 + Batch-Referenz strikt
 ok 10 - Import-Antrag: SHA-256 + Batch-Referenz strikt
   ---
-  duration_ms: 0.394885
+  duration_ms: 0.432389
   type: 'test'
   ...
 # Subtest: Body muss ein Objekt sein
 ok 11 - Body muss ein Objekt sein
   ---
-  duration_ms: 0.41593
+  duration_ms: 0.309678
   type: 'test'
   ...
 # Subtest: ohne Tenant/Actor/Scope/Ticket: deny ohne DB-Zugriff
 ok 12 - ohne Tenant/Actor/Scope/Ticket: deny ohne DB-Zugriff
   ---
-  duration_ms: 0.70995
+  duration_ms: 0.797794
   type: 'test'
   ...
 # Subtest: Systemakteur und unbekannte Ressource: deny
 ok 13 - Systemakteur und unbekannte Ressource: deny
   ---
-  duration_ms: 0.110645
+  duration_ms: 0.13632
   type: 'test'
   ...
 # Subtest: DB entscheidet: erlaubt -> allowed, in Transaktion mit GEPRÜFTEM Ticket-Kontext (C-1)
 ok 14 - DB entscheidet: erlaubt -> allowed, in Transaktion mit GEPRÜFTEM Ticket-Kontext (C-1)
   ---
-  duration_ms: 1.618116
+  duration_ms: 1.370389
   type: 'test'
   ...
 # Subtest: DB verweigert -> deny + Audit-Eintrag
 ok 15 - DB verweigert -> deny + Audit-Eintrag
   ---
-  duration_ms: 0.304914
+  duration_ms: 0.275319
   type: 'test'
   ...
 # Subtest: DB-Fehler -> fail-closed
 ok 16 - DB-Fehler -> fail-closed
   ---
-  duration_ms: 0.282549
+  duration_ms: 0.345965
   type: 'test'
   ...
 # Subtest: approve ist bindend (requiresApproval)
 ok 17 - approve ist bindend (requiresApproval)
   ---
-  duration_ms: 0.116095
+  duration_ms: 0.17423
   type: 'test'
   ...
 # Subtest: R7) scopeNode hat Bedeutung: verein = Wurzelrecht, uuid = Knoten, any = irgendwo, sonst deny
 ok 18 - R7) scopeNode hat Bedeutung: verein = Wurzelrecht, uuid = Knoten, any = irgendwo, sonst deny
   ---
-  duration_ms: 0.433512
+  duration_ms: 0.54262
   type: 'test'
   ...
 # Subtest: Ticket-Dienst weg -> 503 'vorübergehend nicht verfügbar', KEIN Fachzugriff, kein Rückfall
 ok 19 - Ticket-Dienst weg -> 503 'vorübergehend nicht verfügbar', KEIN Fachzugriff, kein Rückfall
   ---
-  duration_ms: 25.499891
+  duration_ms: 24.881447
   type: 'test'
   ...
 # Subtest: Ticket-Dienst nicht konfiguriert / antwortet 5xx / Unsinn -> 503 (fail-closed)
 ok 20 - Ticket-Dienst nicht konfiguriert / antwortet 5xx / Unsinn -> 503 (fail-closed)
   ---
-  duration_ms: 213.972874
+  duration_ms: 212.5802
   type: 'test'
   ...
 # Subtest: Ticket-Dienst weist Token ab -> 401 (kein Zugriff)
 ok 21 - Ticket-Dienst weist Token ab -> 401 (kein Zugriff)
   ---
-  duration_ms: 7.746119
+  duration_ms: 6.31489
   type: 'test'
   ...
 # Subtest: ungültiges Bearer-Token -> 401 noch VOR dem Ticket-Dienst
 ok 22 - ungültiges Bearer-Token -> 401 noch VOR dem Ticket-Dienst
   ---
-  duration_ms: 3.067173
+  duration_ms: 2.844008
   type: 'test'
   ...
 # Subtest: mit Ticket: Fachlogik erhält das Ticket (Kontext nur daraus)
 ok 23 - mit Ticket: Fachlogik erhält das Ticket (Kontext nur daraus)
   ---
-  duration_ms: 3.06782
+  duration_ms: 2.920534
   type: 'test'
   ...
 1..23
@@ -149,4 +149,4 @@ ok 23 - mit Ticket: Fachlogik erhält das Ticket (Kontext nur daraus)
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 17797.127487
+# duration_ms 11494.247882

@@ -155,7 +155,8 @@ expect("P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)",
 # ein bloßer Kommentar bleibt GRÜN; eine spätere GUC-Definition von vv_current_tenant() wird ROT.
 from validators.checks import c1_context as _c1
 _c1dir = os.path.join("apps", "web", "src", "modules", "person")
-_c1files = {n: os.path.join(_c1dir, n) for n in ("_st_c1_guc.ts", "_st_c1_ok.ts", "_st_c1_key.ts", "_st_c1_setlocal.ts")}
+_c1files = {n: os.path.join(_c1dir, n) for n in ("_st_c1_guc.ts", "_st_c1_ok.ts", "_st_c1_key.ts", "_st_c1_setlocal.ts",
+                                                  "_st_c1_dyn.ts", "_st_c1_subtle.ts")}
 try:
     open(_c1files["_st_c1_guc.ts"], "w", encoding="utf-8").write(
         'export const q = (c: any, t: string) => c.query("SELECT set_config(' + "'app.tenant_id'" + ', $1, true)", [t]);\n')
@@ -165,7 +166,15 @@ try:
         'import { createHmac } from "node:crypto";\nexport const s = (k: Buffer) => createHmac("sha256", k);\n')
     open(_c1files["_st_c1_setlocal.ts"], "w", encoding="utf-8").write(
         'export const q = (c: any) => c.query("SET LOCAL app.actor = ' + "'x'" + '");\n')
+    # Review R1 (Codex N-03): dynamisch gebauter GUC-Name + WebCrypto-Schlüsselmaterial
+    open(_c1files["_st_c1_dyn.ts"], "w", encoding="utf-8").write(
+        "const name = 'app.' + 'tenant_id';\nexport const q = (c: any, t: string) => "
+        "c.query('SELECT set_config($1,$2,true)', [name, t]);\n")
+    open(_c1files["_st_c1_subtle.ts"], "w", encoding="utf-8").write(
+        "export const k = (raw: ArrayBuffer) => crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);\n")
     _f = _c1.static_findings()
+    expect("C-1/R1: dynamisch gebauter GUC-Name (set_config($1…)) wird ROT", any(not f.ok and "_st_c1_dyn" in f.detail for f in _f))
+    expect("C-1/R1: WebCrypto-Schlüsselmaterial in der Web-App wird ROT", any(not f.ok and "_st_c1_subtle" in f.detail for f in _f))
     expect("C-1: set_config('app.…') im App-Code wird ROT", any(not f.ok and "_st_c1_guc" in f.detail for f in _f))
     expect("C-1: SET LOCAL app.actor im App-Code wird ROT", any(not f.ok and "_st_c1_setlocal" in f.detail for f in _f))
     expect("C-1: Erwähnung nur im Kommentar bleibt GRÜN", not any("_st_c1_ok" in f.detail for f in _f))
@@ -176,6 +185,10 @@ try:
     _m = _c1.static_findings(files=[], migrations=_mig)
     expect("C-1: spätere GUC-Definition von vv_current_tenant() wird ROT",
            any(not f.ok and "vv_current_tenant" in f.detail for f in _m))
+    _mig2 = ["CREATE OR REPLACE FUNCTION vv_actor() RETURNS text LANGUAGE sql AS $$ SELECT c.actor FROM vv_ctx c "
+             "WHERE c.exp_at >= statement_timestamp() $$;"]
+    expect("C-1/R1: Ablaufprüfung mit statement_timestamp statt realer Uhr wird ROT",
+           any(not f.ok and "reale Uhr" in f.detail for f in _c1.static_findings(files=[], migrations=_mig2)))
     expect("C-1: reale Migrationen: Kontext-Funktionen lesen keine GUC (GRÜN)",
            all(f.ok for f in _c1.static_findings(files=[]) ))
 finally:

@@ -1,4 +1,4 @@
-== C-1 Kontext-Signatur: DB-Gegenproben (Lauf 6811d8) ==
+== C-1 Kontext-Signatur: DB-Gegenproben (Lauf f53ef3) ==
   [OK ] DoD1: P54-Repro 1 — set_config(tenant B) + SELECT person als vv_app verweigert
   [OK ] DoD1: frei gesetzte GUCs wirken nicht (vv_current_tenant/vv_actor bleiben leer)
   [OK ] DoD1: gefälschter Kontext öffnet auch über Funktionen nichts (0 Zeilen / deny)
@@ -48,7 +48,9 @@
   [OK ] DoD5: parallel — von zwei gleichzeitigen verbindlichen Aktionen mit einem Ticket gewinnt genau eine
   [OK ] DoD5: Freigabe/Ablehnung verbraucht das Ticket (zweite Entscheidung verweigert)
   [OK ] DoD5: …Entscheidung bleibt die erste (abgelehnt)
-  [OK ] DoD5: alle 8 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern
+  [OK ] R1/M-01: zwei Aging-up-Entscheidungen mit EINEM Ticket verweigert
+  [OK ] R1/M-01: …erste Entscheidung wirkt, zweite mit demselben Ticket verweigert
+  [OK ] DoD5: alle 9 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern
   [OK ] DoD5: Kernfunktionen (ohne Einmal-Prüfung) sind für App/Worker nicht aufrufbar
   [OK ] DoD6: vv_worker darf exakt die feste Systemfunktions-Liste ausführen
   [OK ] DoD6: keine Überschneidung Nutzer-Funktionen ↔ Worker-Funktionen
@@ -69,5 +71,16 @@
   [OK ] DoD7: nach Ende der Übergangszeit (valid_until) wird der alte Schlüssel verweigert
   [OK ] DoD7: Schlüsselverwaltung nur für den Betreiber
   [OK ] Housekeeping: abgelaufene Einmal-Kennungen werden entfernt (Worker-Systemfunktion)
+  [OK ] R1/H-01: Mehrfachnachricht (eine Protokollnachricht) liest nach Ablauf nichts mehr
+  [OK ] R1/H-01: DO-Block (ein Statement) liest nach Ablauf nichts mehr
+  [OK ] R1/H-01: verbindliche Aktion nach Ablauf im DO-Block verweigert, nichts angelegt
+  [OK ] R1/H-01: Kontrolle — innerhalb der Frist funktioniert derselbe DO-Block
+  [OK ] R1/H-01: abgelaufener Kontext liefert bei Listen einen Fehler statt einer (gekürzten) Liste
+  [OK ] R1/H-01: Listen mit zeilenweiser Berechtigung prüfen den Kontext am Ende erneut (3 Funktionen)
+  [OK ] R1/H-01: Kontext-/Einmal-Prüfung nutzen ausschließlich die reale Uhr (clock_timestamp)
+  [OK ] R1/N-01: doppelter Schlüssel in der Nutzlast verweigert
+  [OK ] R1/G3: Uhrversatz — iat bis +5 s angenommen (+4 s ok), darüber verweigert (+6 s)
+  [OK ] R1/G3: exp ohne Toleranz — Ticket mit exp = jetzt verweigert
+  [OK ] R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)
 ----------------------------------------------------------------------
-C-1-Gegenproben: 70/70 erfüllt
+C-1-Gegenproben: 83/83 erfüllt

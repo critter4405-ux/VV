@@ -1,7 +1,7 @@
 {
-  "run": "e38fd0",
+  "run": "7f2084",
   "passed": true,
-  "total": 70,
+  "total": 83,
   "results": [
     {
       "name": "DoD1: P54-Repro 1 — set_config(tenant B) + SELECT person als vv_app verweigert",
@@ -200,7 +200,15 @@
       "ok": true
     },
     {
-      "name": "DoD5: alle 8 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern",
+      "name": "R1/M-01: zwei Aging-up-Entscheidungen mit EINEM Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/M-01: …erste Entscheidung wirkt, zweite mit demselben Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD5: alle 9 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern",
       "ok": true
     },
     {
@@ -281,6 +289,50 @@
     },
     {
       "name": "Housekeeping: abgelaufene Einmal-Kennungen werden entfernt (Worker-Systemfunktion)",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Mehrfachnachricht (eine Protokollnachricht) liest nach Ablauf nichts mehr",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: DO-Block (ein Statement) liest nach Ablauf nichts mehr",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: verbindliche Aktion nach Ablauf im DO-Block verweigert, nichts angelegt",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Kontrolle — innerhalb der Frist funktioniert derselbe DO-Block",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: abgelaufener Kontext liefert bei Listen einen Fehler statt einer (gekürzten) Liste",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Listen mit zeilenweiser Berechtigung prüfen den Kontext am Ende erneut (3 Funktionen)",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Kontext-/Einmal-Prüfung nutzen ausschließlich die reale Uhr (clock_timestamp)",
+      "ok": true
+    },
+    {
+      "name": "R1/N-01: doppelter Schlüssel in der Nutzlast verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/G3: Uhrversatz — iat bis +5 s angenommen (+4 s ok), darüber verweigert (+6 s)",
+      "ok": true
+    },
+    {
+      "name": "R1/G3: exp ohne Toleranz — Ticket mit exp = jetzt verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)",
       "ok": true
     }
   ]

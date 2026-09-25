@@ -1,5 +1,5 @@
 {
-  "run": "e9c39c",
+  "run": "10bfaf",
   "passed": true,
   "total": 140,
   "results": [
@@ -504,7 +504,7 @@
       "ok": true
     },
     {
-      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (3.7 s)",
+      "name": "G-2: Laufzeit 3.005 Zeilen < 60 s (2.3 s)",
       "ok": true
     },
     {

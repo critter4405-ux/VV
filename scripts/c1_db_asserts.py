@@ -257,10 +257,13 @@ def main() -> int:
     check("DoD4: M05-Lesesicht mit A-Ticket enthält keine B-Personen", mb == [(0,)], str(mb))
 
     # ------------------------------------------------------------ DoD 5: Einmal-Tickets
-    t1 = tk(AA, VORSTAND)
-    reads = [with_ticket(t1, "SELECT count(*) FROM m05_list_members()")[0][0] for _ in range(3)]
+    # Mehrfach-Lesen über eine schnelle Lesesicht; jede Einmal-Probe bekommt ein FRISCHES Ticket
+    # (Review R1: auf dem CI-Runner lief ein geteiltes Ticket vor dem Export ab -> „abgelaufen“ statt „verbraucht“).
+    t0 = tk(AA, VORSTAND)
+    reads = [with_ticket(t0, "SELECT count(*) FROM basis01_list_persons()")[0][0] for _ in range(3)]
     check("DoD5: Lesen innerhalb von 60 s mehrfach möglich (3 Transaktionen, selbes Ticket)", len(set(reads)) == 1)
     purpose = "Kassaprüfung C-1 Gegenprobe"
+    t1 = tk(AA, VORSTAND)
     with_ticket(t1, "SELECT count(*) FROM m05_export_members(%s)", (purpose,))
     e = err(lambda: with_ticket(t1, "SELECT count(*) FROM m05_export_members(%s)", (purpose,)))
     check("DoD5: zweite verbindliche Aktion mit demselben Ticket verweigert (Export)",
@@ -319,14 +322,31 @@ def main() -> int:
         check("DoD5: Freigabe/Ablehnung verbraucht das Ticket (zweite Entscheidung verweigert)", "verbraucht" in e, e)
         who = boot("SELECT status FROM approval WHERE id = %s", (appr,))[0][0]
         check("DoD5: …Entscheidung bleibt die erste (abgelehnt)", who == "rejected", who)
+        # Review R1 (Codex M-01): Aging-up-Entscheidung ist einmalig — ein Ticket entscheidet genau EINEN Vorschlag.
+        props = [boot("INSERT INTO membership_proposal (tenant_id, period_id, kind, from_type_id, to_type_id, due_date) "
+                      "VALUES (%s,%s,'aging_up',%s,%s,m05_today()+%s) RETURNING id::text", (AA, pid, typ, typ, d))[0][0]
+                 for d in (400, 401)]
+        tp = tk(AA, ADMIN)
+        e = err(lambda: tx(APP, [("SELECT vv_set_context(%s)", (tp,)),
+                                 ("SELECT m05_decide_proposal(%s,'abgelehnt')", (props[0],)),
+                                 ("SELECT m05_decide_proposal(%s,'abgelehnt')", (props[1],))]))
+        check("R1/M-01: zwei Aging-up-Entscheidungen mit EINEM Ticket verweigert", "verbraucht" in e, e)
+        r1: list = []
+        e0 = err(lambda: r1.extend(with_ticket(tp, "SELECT m05_decide_proposal(%s,'abgelehnt')->>'ok'", (props[0],))))
+        e = err(lambda: with_ticket(tp, "SELECT m05_decide_proposal(%s,'abgelehnt')", (props[1],)))
+        st = boot("SELECT string_agg(status, ',' ORDER BY due_date) FROM membership_proposal WHERE id = ANY(%s::uuid[])",
+                  (props,))[0][0]
+        check("R1/M-01: …erste Entscheidung wirkt, zweite mit demselben Ticket verweigert",
+              r1 == [("true",)] and "verbraucht" in e and st == "abgelehnt,offen", f"{r1} {e0} {e} {st}")
     else:
         check("DoD5: Testperiode für Freigabe-Probe vorhanden", False, "keine aktive Periode im Seed")
     wrap = boot("""SELECT string_agg(p.proname, ',' ORDER BY p.proname) FROM pg_proc p JOIN pg_namespace n
                      ON n.oid = p.pronamespace AND n.nspname = 'public'
-                  WHERE p.proname IN ('m05_decide','m05_import_decide','m05_request_termination','m05_import_request',
-                                      'm05_export_members','m05_list_members','rbac_assign_role','rbac_revoke_role')
+                  WHERE p.proname IN ('m05_decide','m05_decide_proposal','m05_import_decide','m05_request_termination',
+                                      'm05_import_request','m05_export_members','m05_list_members','rbac_assign_role',
+                                      'rbac_revoke_role')
                     AND p.prosrc ~ 'vv_ticket_once' AND p.prosrc ~ '__kern'""")[0][0]
-    check("DoD5: alle 8 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern", wrap and len(wrap.split(",")) == 8,
+    check("DoD5: alle 9 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern", wrap and len(wrap.split(",")) == 9,
           str(wrap))
     kern_app = boot("""SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
                        WHERE p.proname LIKE '%%\\_\\_kern' AND (has_function_privilege('vv_app', p.oid, 'EXECUTE')
@@ -408,6 +428,101 @@ def main() -> int:
     left = boot("SELECT count(*) FROM ticket_used WHERE exp_at < now() - interval '10 minutes'")[0][0]
     check("Housekeeping: abgelaufene Einmal-Kennungen werden entfernt (Worker-Systemfunktion)",
           hk["ticket_used_deleted"] >= 1 and left == 0, str(hk))
+
+    # ------------------------------------------------------------ Review R1 (Codex/Gemini): Nachbesserungen
+    # H-01: Ablauf gilt gegen die REALE Uhr — auch innerhalb EINER Protokollnachricht und in DO-Blöcken.
+    def fresh_app_err(sql_text: str) -> str:
+        c = conn("vv_app")
+        try:
+            c.execute(sql_text)
+            return ""
+        except psycopg.Error as ex:
+            return str(ex).split("\n")[0]
+        finally:
+            c.close()
+    ts = tk(AA, SCHRIFT, ttl=2)
+    e = fresh_app_err(f"BEGIN; SELECT vv_set_context('{ts}'); SELECT pg_sleep(3); "
+                      f"SELECT count(*) FROM basis01_list_persons(); COMMIT")
+    check("R1/H-01: Mehrfachnachricht (eine Protokollnachricht) liest nach Ablauf nichts mehr", "deny-by-default" in e, e)
+    ts = tk(AA, SCHRIFT, ttl=2)
+    e = err(lambda: tx(APP, [(f"DO $$ DECLARE n int; BEGIN PERFORM vv_set_context('{ts}'); PERFORM pg_sleep(3); "
+                              f"SELECT count(*) INTO n FROM basis01_list_persons(); END $$", ())]))
+    check("R1/H-01: DO-Block (ein Statement) liest nach Ablauf nichts mehr", "deny-by-default" in e, e)
+    ts, ref = tk(AA, SCHRIFT, ttl=2), f"C1EXP{RUN}"
+    e = err(lambda: tx(APP, [(f"DO $$ BEGIN PERFORM vv_set_context('{ts}'); PERFORM pg_sleep(3); "
+                              f"PERFORM m05_import_request('{ref}', repeat('a', 64), 1); END $$", ())]))
+    n_ref = boot("SELECT count(*) FROM approval WHERE subject_ref LIKE %s", (f"%{ref}%",))[0][0]
+    check("R1/H-01: verbindliche Aktion nach Ablauf im DO-Block verweigert, nichts angelegt",
+          "deny-by-default" in e and n_ref == 0, f"{e} / angelegt={n_ref}")
+    ts = tk(AA, SCHRIFT, ttl=30)
+    ok_do = err(lambda: tx(APP, [(f"DO $$ DECLARE n int; BEGIN PERFORM vv_set_context('{ts}'); "
+                                  f"SELECT count(*) INTO n FROM basis01_list_persons(); "
+                                  f"IF n = 0 THEN RAISE EXCEPTION 'leer'; END IF; END $$", ())]))
+    check("R1/H-01: Kontrolle — innerhalb der Frist funktioniert derselbe DO-Block", ok_do == "", ok_do)
+    ts = tk(AA, VORSTAND, ttl=2)
+    e = err(lambda: tx(APP, [(f"DO $$ DECLARE n int; BEGIN PERFORM vv_set_context('{ts}'); PERFORM pg_sleep(3); "
+                              f"SELECT count(*) INTO n FROM m05_list_members(); END $$", ())]))
+    check("R1/H-01: abgelaufener Kontext liefert bei Listen einen Fehler statt einer (gekürzten) Liste",
+          "deny-by-default" in e, e)
+    ends = boot("""SELECT count(*) FROM pg_proc WHERE proname IN ('m05_list_members','m05_export_members',
+                    'm05_pending_approvals') AND prosrc ~ 'vv_ctx_require_valid'""")[0][0]
+    check("R1/H-01: Listen mit zeilenweiser Berechtigung prüfen den Kontext am Ende erneut (3 Funktionen)", ends == 3, str(ends))
+    stale = boot("""SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
+                     WHERE p.proname IN ('vv_current_tenant','vv_actor','vv_ctx_kind','vv_ticket_once','vv_set_context')
+                       AND (p.prosrc ~ 'statement_timestamp|transaction_timestamp|now\\(\\)'
+                            OR p.prosrc !~ 'clock_timestamp')""")[0][0]
+    check("R1/H-01: Kontext-/Einmal-Prüfung nutzen ausschließlich die reale Uhr (clock_timestamp)", stale == 0, str(stale))
+
+    # N-01: doppelte Schlüssel in der signierten Nutzlast verweigert (auch wenn der letzte Wert gültig wäre).
+    rk, rkey = vv_ticket.load_keyring(RING)
+    nw = int(time.time())
+    dup = vv_ticket.sign(('{"t":"%s","t":"%s","s":"%s","iat":%d,"exp":%d,"jti":"%s"}'
+                          % (BB, AA, ADMIN, nw, nw + 30, uuid.uuid4())).encode(), rk, rkey)
+    e = err(lambda: with_ticket(dup, "SELECT 1"))
+    check("R1/N-01: doppelter Schlüssel in der Nutzlast verweigert", "Nutzlast" in e, e)
+
+    # Gemini G3 (revidiert): KEINE Toleranz auf exp; bestehende 5-s-Toleranz für iat (DB-Uhr geht nach) belegt.
+    ok4 = err(lambda: with_ticket(tk(AA, SCHRIFT, iat=nw + 4, exp=nw + 34), "SELECT 1"))
+    e6 = err(lambda: with_ticket(tk(AA, SCHRIFT, iat=nw + 6, exp=nw + 36), "SELECT 1"))
+    check("R1/G3: Uhrversatz — iat bis +5 s angenommen (+4 s ok), darüber verweigert (+6 s)",
+          ok4 == "" and "Gültigkeitsfenster" in e6, f"{ok4} | {e6}")
+    e = err(lambda: with_ticket(tk(AA, SCHRIFT, iat=nw - 60, exp=nw), "SELECT 1"))
+    check("R1/G3: exp ohne Toleranz — Ticket mit exp = jetzt verweigert", "abgelaufen" in e, e)
+
+    # N-02: Antragsteller-Bindung auf dem ECHTEN Pfad App -> Definer-Funktion (Testfunktion, zurückgerollt).
+    tsp = tk(AA, SCHRIFT)
+    res: list[str] = []
+    try:
+        with BOOT.transaction():
+            cur = BOOT.cursor()
+            cur.execute("""CREATE FUNCTION public.c1_probe_approval(p_req text) RETURNS void LANGUAGE sql
+                           SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+                           INSERT INTO approval (tenant_id, kind, effect_id, subject_ref, requested_by)
+                           VALUES (vv_current_tenant(), 'deletion', 'person.delete', 'c1-r1-probe', p_req) $f$""")
+            cur.execute("ALTER FUNCTION public.c1_probe_approval(text) OWNER TO vv_definer")
+            cur.execute("GRANT EXECUTE ON FUNCTION public.c1_probe_approval(text) TO vv_app")
+            cur.execute("SET SESSION AUTHORIZATION vv_app")
+            cur.execute("SELECT session_user::text, vv_set_context(%s) IS NOT NULL", (tsp,))
+            res.append(cur.fetchone()[0])
+            cur.execute("SAVEPOINT s1")
+            try:
+                cur.execute("SELECT public.c1_probe_approval(%s)", (SCHRIFT,))
+                res.append("eigener-ok")
+            except psycopg.Error as ex:
+                res.append("eigener-FEHLER:" + str(ex).split("\n")[0])
+            cur.execute("ROLLBACK TO SAVEPOINT s1")
+            try:
+                cur.execute("SELECT public.c1_probe_approval(%s)", (VORSTAND,))
+                res.append("fremd-ANGENOMMEN")
+            except psycopg.Error as ex:
+                res.append("fremd-verweigert" if "Spoofing" in str(ex) else "fremd:" + str(ex).split("\n")[0])
+            cur.execute("ROLLBACK TO SAVEPOINT s1")
+            raise psycopg.Rollback()
+    finally:
+        BOOT.execute("RESET SESSION AUTHORIZATION") if not BOOT.closed else None
+    left_fn = boot("SELECT count(*) FROM pg_proc WHERE proname = 'c1_probe_approval'")[0][0]
+    check("R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)",
+          res == ["vv_app", "eigener-ok", "fremd-verweigert"] and left_fn == 0, f"{res} rest={left_fn}")
 
     fails = [n for n, ok in RESULTS if not ok]
     print("-" * 70)

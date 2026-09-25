@@ -18,3 +18,16 @@
 - Die Ticket-Prüfung kostet je Anfrage einmalig < 1 ms (HMAC + eine Kontextzeile, UNLOGGED).
 - Die RLS-Prüfung wird durch `(SELECT vv_current_tenant())` **einmal je Abfrage** ausgewertet (InitPlan) statt je Zeile — rund 3× schneller als die Auswertung je Zeile; teuer pro Zeile wird die Prüfung damit nicht.
 - Der Kontext selbst ist ein Primärschlüssel-Zugriff (Backend-PID) mit Abgleich der Transaktions-ID.
+
+## Nachtrag Review R1 (25.09.2026) — Kontextfunktionen und M05-Liste
+
+Anlass: Die rote CI (DoD5) zeigte, dass `m05_list_members()` bei 3 008 synthetischen Mitgliedern (Mandant A nach den Stage-0/M05-Gegenproben) mehrere Sekunden braucht. Messung lokal, PostgreSQL 16.13, gleiche Datenbasis:
+
+| Variante | `m05_list_members()` |
+|---|---|
+| Kontext wie `master` (inlinebare GUC-Funktion, nur zum Vergleich, zurückgerollt) | 4,4 s |
+| C-1 v1.0: `vv_current_tenant()` als `BEGIN ATOMIC`-SQL-Funktion (~160 000 Aufrufe, Neuplanung je verschachtelter Abfrage, ~60 µs) | 8,7 s |
+| **C-1 nach R1: `plpgsql` (Plan-Cache je Sitzung) + reale Uhr** | **5,3 s** (3 Läufe: 5,43 / 5,29 / 5,29 s) |
+| `basis01_list_persons()` (RLS-InitPlan, 3 033 Zeilen) | 4 ms |
+
+Einordnung: C-1 kostet bei der M05-Liste jetzt rund +20 % statt +100 %. Die Grundlaufzeit (zeilenweise Berechtigung in `m05_member_rows`) stammt aus dem M05-Bestand und gehört nicht zu diesem Bauschritt (Nicht-Ziel). Sie ist als Register-Punkt vorgeschlagen (mengenbasierte Berechtigung), fällig vor Vereinen mit mehreren tausend Mitgliedern.

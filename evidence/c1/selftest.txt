@@ -14,11 +14,14 @@
   [OK ] R6: .github/workflows/codeql.yml push-Trigger deckt realen Hauptbranch (main, master)
   [OK ] P57: pgboss-Tabelle außerhalb der generierten Migration wird ROT
   [OK ] P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)
+  [OK ] C-1/R1: dynamisch gebauter GUC-Name (set_config($1…)) wird ROT
+  [OK ] C-1/R1: WebCrypto-Schlüsselmaterial in der Web-App wird ROT
   [OK ] C-1: set_config('app.…') im App-Code wird ROT
   [OK ] C-1: SET LOCAL app.actor im App-Code wird ROT
   [OK ] C-1: Erwähnung nur im Kommentar bleibt GRÜN
   [OK ] C-1: HMAC-/Schlüsselmaterial in der Web-App wird ROT
   [OK ] C-1: spätere GUC-Definition von vv_current_tenant() wird ROT
+  [OK ] C-1/R1: Ablaufprüfung mit statement_timestamp statt realer Uhr wird ROT
   [OK ] C-1: reale Migrationen: Kontext-Funktionen lesen keine GUC (GRÜN)
 ------------------------------------------------------------
-Validator-Selbsttest: 22/22 Erwartungen erfüllt
+Validator-Selbsttest: 25/25 Erwartungen erfüllt

@@ -93,35 +93,40 @@ BEGIN ATOMIC
 END;
 
 -- =============================================================================================
--- 4) Kontext lesen — NUR geprüfter Zustand (SQL-Standard-Body: Namen/Operatoren beim Anlegen
---    gebunden -> kein search_path-/Objekt-Schatten durch den Aufrufer möglich)
+-- 4) Kontext lesen — NUR geprüfter Zustand
+--    * Ablauf gegen die REALE Uhr (clock_timestamp) bei JEDER Auswertung (Review R1, Codex H-01):
+--      statement_timestamp() bleibt innerhalb einer Protokollnachricht bzw. eines DO-Blocks stehen und
+--      hätte ein abgegriffenes Ticket über exp hinaus (im DO-Block beliebig lange) gültig gehalten.
+--      STABLE bleibt korrekt genug: innerhalb EINER Abfrage wird der Wert höchstens einmal je
+--      Auswertung (RLS-InitPlan) bestimmt; jede neue Abfrage – auch in Funktionen/DO – prüft neu.
+--    * plpgsql statt SQL-Body (Bau-KI E-1): Plan-Cache je Sitzung statt Neuplanung in jeder
+--      verschachtelten Abfrage (M05-Liste 8,7 s -> ~5 s bei 3 008 Mitgliedern). Schutz gegen
+--      Namens-Schatten: fester search_path (pg_catalog, pg_temp) + voll qualifizierte Tabelle;
+--      vv_app hat kein TEMP-Recht.
 -- =============================================================================================
 CREATE OR REPLACE FUNCTION vv_current_tenant() RETURNS uuid
-LANGUAGE sql STABLE SECURITY DEFINER
-BEGIN ATOMIC
-  SELECT c.tenant FROM public.vv_ctx c
-   WHERE c.pid = pg_catalog.pg_backend_pid()
-     AND c.xid = pg_catalog.pg_current_xact_id_if_assigned()
-     AND (c.exp_at IS NULL OR c.exp_at >= pg_catalog.statement_timestamp());
-END;
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  RETURN (SELECT c.tenant FROM public.vv_ctx c
+           WHERE c.pid = pg_backend_pid() AND c.xid = pg_current_xact_id_if_assigned()
+             AND (c.exp_at IS NULL OR c.exp_at > clock_timestamp()));
+END $$;
 
 CREATE OR REPLACE FUNCTION vv_actor() RETURNS text
-LANGUAGE sql STABLE SECURITY DEFINER
-BEGIN ATOMIC
-  SELECT c.actor FROM public.vv_ctx c
-   WHERE c.pid = pg_catalog.pg_backend_pid()
-     AND c.xid = pg_catalog.pg_current_xact_id_if_assigned()
-     AND (c.exp_at IS NULL OR c.exp_at >= pg_catalog.statement_timestamp());
-END;
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  RETURN (SELECT c.actor FROM public.vv_ctx c
+           WHERE c.pid = pg_backend_pid() AND c.xid = pg_current_xact_id_if_assigned()
+             AND (c.exp_at IS NULL OR c.exp_at > clock_timestamp()));
+END $$;
 
 CREATE OR REPLACE FUNCTION vv_ctx_kind() RETURNS text
-LANGUAGE sql STABLE SECURITY DEFINER
-BEGIN ATOMIC
-  SELECT c.kind FROM public.vv_ctx c
-   WHERE c.pid = pg_catalog.pg_backend_pid()
-     AND c.xid = pg_catalog.pg_current_xact_id_if_assigned()
-     AND (c.exp_at IS NULL OR c.exp_at >= pg_catalog.statement_timestamp());
-END;
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  RETURN (SELECT c.kind FROM public.vv_ctx c
+           WHERE c.pid = pg_backend_pid() AND c.xid = pg_current_xact_id_if_assigned()
+             AND (c.exp_at IS NULL OR c.exp_at > clock_timestamp()));
+END $$;
 
 -- =============================================================================================
 -- 5) Kontext setzen
@@ -133,7 +138,7 @@ CREATE OR REPLACE FUNCTION vv_set_context(p_ticket text) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   parts text[]; v_kid text; v_key bytea; v_sig bytea; v_calc bytea; v_nonce bytea;
-  v_payload jsonb; v_keys text[]; v_t uuid; v_s text; v_iat bigint; v_exp bigint; v_jti uuid;
+  v_payload jsonb; v_raw text; v_keys text[]; v_t uuid; v_s text; v_iat bigint; v_exp bigint; v_jti uuid;
   v_now numeric := extract(epoch FROM clock_timestamp());
 BEGIN
   IF session_user = 'vv_worker' THEN
@@ -163,8 +168,15 @@ BEGIN
     RAISE EXCEPTION 'Ticket verweigert: Signatur ungültig' USING ERRCODE = '28000';
   END IF;
   -- Nutzlast erst NACH gültiger Signatur auswerten.
+  -- Doppelte Schlüssel verboten (Review R1, Codex N-01): jsonb würde still „letzter gewinnt“
+  -- normalisieren; json behält jedes Vorkommen -> Anzahl muss exakt 5 sein.
   BEGIN
-    v_payload := convert_from(vv_b64url_decode(parts[3]), 'UTF8')::jsonb;
+    v_raw     := convert_from(vv_b64url_decode(parts[3]), 'UTF8');
+    v_payload := v_raw::jsonb;
+    IF json_typeof(v_raw::json) = 'object'
+       AND (SELECT count(*) FROM json_object_keys(v_raw::json)) <> 5 THEN
+      RAISE EXCEPTION 'doppelte Schlüssel';
+    END IF;
   EXCEPTION WHEN OTHERS THEN
     RAISE EXCEPTION 'Ticket verweigert: Nutzlast' USING ERRCODE = '28000';
   END;
@@ -259,7 +271,7 @@ DECLARE c public.vv_ctx;
 BEGIN
   SELECT * INTO c FROM public.vv_ctx x
    WHERE x.pid = pg_backend_pid() AND x.xid = pg_current_xact_id_if_assigned()
-     AND (x.exp_at IS NULL OR x.exp_at >= statement_timestamp());
+     AND (x.exp_at IS NULL OR x.exp_at > clock_timestamp());      -- reale Uhr (H-01)
   IF NOT FOUND THEN
     RAISE EXCEPTION 'deny-by-default: verbindliche Aktion ohne geprüften Kontext' USING ERRCODE = '42501';
   END IF;
@@ -498,12 +510,26 @@ END $$;
 
 -- =============================================================================================
 -- 10) Verbindliche Aktionen: Einmal-Ticket VOR dem fachlichen Kern (Kern umbenannt, nur Definer)
+--     Listen mit zeilenweiser Berechtigung prüfen den Kontext am ENDE erneut (Review R1, H-01):
+--     läuft das Ticket mitten in der Abfrage ab, gibt es einen Fehler statt einer still gekürzten
+--     Liste (Ablauf ist monoton: gilt der Kontext am Ende, galt er durchgehend).
 -- =============================================================================================
+CREATE OR REPLACE FUNCTION vv_ctx_require_valid(p_what text) RETURNS void
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  IF public.vv_current_tenant() IS NULL THEN
+    RAISE EXCEPTION 'deny-by-default: Kontext während % abgelaufen – Anfrage wiederholen', p_what
+      USING ERRCODE = '42501';
+  END IF;
+END $$;
+
 DO $$
 DECLARE r record;
 BEGIN
   FOR r IN SELECT * FROM (VALUES
       ('m05_decide',              'uuid, text'),
+      ('m05_decide_proposal',     'uuid, text'),
+      ('m05_pending_approvals',   ''),
       ('m05_import_decide',       'text, text'),
       ('m05_request_termination', 'uuid, text, date, text, text, text, date, integer'),
       ('m05_import_request',      'text, text, integer'),
@@ -523,6 +549,25 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   PERFORM vv_ticket_once('m05.decide');
   RETURN m05_decide__kern(p_approval, p_decision);
+END $$;
+
+-- Aging-up-Vorschlag bestätigen/ablehnen = Freigabe/Ablehnung mit Wirkung (Mitgliedsart) -> einmalig
+-- (Review R1, Codex M-01; Betreiber-Entscheidung 25.09.2026).
+CREATE OR REPLACE FUNCTION m05_decide_proposal(p_proposal uuid, p_decision text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+BEGIN
+  PERFORM vv_ticket_once('m05.decide_proposal');
+  RETURN m05_decide_proposal__kern(p_proposal, p_decision);
+END $$;
+
+-- Offene Anträge: Lesen (mehrfach), aber mit End-Prüfung des Kontexts.
+CREATE OR REPLACE FUNCTION m05_pending_approvals()
+RETURNS TABLE (approval_id uuid, period_id uuid, effect_id text, requested_by text, created_at timestamptz,
+               expires_at timestamptz, status text, payload jsonb)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM m05_pending_approvals__kern();
+  PERFORM vv_ctx_require_valid('der Antragsliste');
 END $$;
 
 CREATE OR REPLACE FUNCTION m05_import_decide(p_batch_ref text, p_decision text) RETURNS jsonb
@@ -557,6 +602,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   PERFORM vv_ticket_once('m05.export');
   RETURN QUERY SELECT * FROM m05_export_members__kern(p_purpose, p_include_locked);
+  PERFORM vv_ctx_require_valid('des Exports');
 END $$;
 
 -- Lesen bleibt mehrfach möglich; nur der Zugriff auf GESPERRTE Daten (Art. 18, mit Zweck) ist einmalig.
@@ -569,6 +615,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   IF p_include_locked THEN PERFORM vv_ticket_once('m05.list_locked'); END IF;
   RETURN QUERY SELECT * FROM m05_list_members__kern(p_include_locked, p_purpose);
+  PERFORM vv_ctx_require_valid('der Mitgliederliste');
 END $$;
 
 CREATE OR REPLACE FUNCTION rbac_assign_role(p_person uuid, p_role text, p_scope uuid,
@@ -615,13 +662,15 @@ ALTER FUNCTION vv_worker_context(uuid)        OWNER TO vv_ticketcheck;
 ALTER FUNCTION vv_worker_tenants()            OWNER TO vv_ticketcheck;
 ALTER FUNCTION vv_ticket_once(text)           OWNER TO vv_ticketcheck;
 ALTER FUNCTION vv_ticket_housekeeping()       OWNER TO vv_ticketcheck;
+ALTER FUNCTION vv_ctx_require_valid(text)     OWNER TO vv_ticketcheck;
 ALTER FUNCTION basis01_list_persons()         OWNER TO vv_definer;
 ALTER FUNCTION basis02_list_role_assignments() OWNER TO vv_definer;
 DO $$
 DECLARE f record;
 BEGIN
   FOR f IN SELECT p.oid::regprocedure AS sig FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-            WHERE n.nspname = 'public' AND p.proname IN ('m05_decide','m05_import_decide','m05_request_termination',
+            WHERE n.nspname = 'public' AND p.proname IN ('m05_decide','m05_decide_proposal','m05_pending_approvals',
+                  'm05_import_decide','m05_request_termination',
                   'm05_import_request','m05_export_members','m05_list_members','rbac_assign_role','rbac_revoke_role')
   LOOP
     EXECUTE format('ALTER FUNCTION %s OWNER TO vv_definer', f.sig);
@@ -683,7 +732,7 @@ TO vv_worker;
 
 -- Definer-Rolle (Fachfunktionen): Kontext lesen, Einmal-Ticket, reine Helfer; Kerne der Wrapper.
 GRANT EXECUTE ON FUNCTION vv_current_tenant(), vv_actor(), vv_ctx_kind(), vv_ticket_once(text),
-  vv_model_family(text), vv_attestation_ok(text, text) TO vv_definer;
+  vv_ctx_require_valid(text), vv_model_family(text), vv_attestation_ok(text, text) TO vv_definer;
 -- Prüf-Rolle: eigene Helfer.
 GRANT EXECUTE ON FUNCTION vv_b64url_decode(text) TO vv_ticketcheck;
 

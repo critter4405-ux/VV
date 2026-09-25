@@ -11,7 +11,7 @@ VV Gate-Validator (Stage 0) — ADR-Invarianten gate-blockierend
 [PASS] ADR-09  Jedes Gate hat verlinkte Evidenz  (38/38 ok)
 [PASS] K31     Kein Personenbezug im Repo/CI (nur synthetisch)  (2/2 ok)
 [PASS] ADR-01  LIVE: RLS/Rollen effektiv (echte PostgreSQL)  (20/20 ok)
-[PASS] C-1     C-1: Kontext nur per Ticket (keine app.*-GUC, kein Schlüssel in der App)  (6/6 ok)
+[PASS] C-1     C-1: Kontext nur per Ticket (keine app.*-GUC, kein Schlüssel in der App)  (7/7 ok)
 --------------------------------------------------------------------------
 GATE 0 -> 1: GRÜN — alle ADR-Invarianten erfüllt (inkl. Live-DB).
 Report: evidence/c1/validator-report.json
