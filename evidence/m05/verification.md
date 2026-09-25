@@ -1,4 +1,4 @@
-# M05 „Mitglieder" — Verifikation (Bau-KI, Phase B + Reparaturrunden 1 und 2)
+# M05 „Mitglieder" — Verifikation (Bau-KI, Phase B + Reparaturrunden 1 und 2) — FREIGEGEBEN 25.09.2026
 
 > **Stand:** 24.09.2026 · **Bau-KI:** Claude Code + Opus 5.5 · **Umgebung:** echte PostgreSQL 16.13, frisch aufgesetzt (Migrationen 0001–0011 + synthetische Seeds; Stand Reparaturrunde 2), wie CI-Job `db-integration`.
 > **Wichtig:** Das hier ist der Nachweis der **Bau-KI**. Das unabhängige Vier-Augen-Review (Codex + Gemini) wiederholt die Prüfung selbst und übernimmt diese Nachweise **nicht**.
@@ -74,6 +74,10 @@ Codex GPT-6 Sol (nicht bestanden) + Gemini 3.1 Pro (bestanden) auf `2ff76e1`; Be
 ## Review Runde 3 (Bestätigung) — konvergiert
 
 Codex **GPT-6 Sol** auf `d3f3027`, erstmals mit eigenem Live-Lauf (PostgreSQL 16.15 in Docker/WSL): **„bestanden", keine neuen Befunde**; H-1, H-2, M-1, M-2, N-1 einzeln live reproduziert und behoben. Harness-FAILs 3/16 = Umgebung (Debian-Paketindex 404 im Python-Image), unabhängige Nachläufe grün (M05 137/137, Validatoren LIVE, Web/Worker 18/18). Details: [review-r3/einstufung.md](review-r3/einstufung.md).
+
+## Freigabe
+
+**Betreiber-Freigabe erteilt (25.09.2026):** Merge Pull Request #16 `feat/m05-mitglieder` → `master` (`b60c81d`) nach 23/23 grünen Checks (vv-ci, CodeQL inkl. Code-Scanning ohne neue Hinweise). Erster CI-/CodeQL-Lauf auf `master` grün. Register P56.
 
 ## Bewusst offen (dokumentiert, nicht Teil von M05 Phase 1)
 

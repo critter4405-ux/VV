@@ -1,16 +1,16 @@
 # Bau-Dossier — VV-M05 · Mitglieder (Mitglieder-CRM)
 
 > **Bau-Dossier (K29).** Phase 1, gebaut zur geschärften Spec (Baubuch v0.20, Steckbrief VV-M05; Register P50).
-> **Status: in_bau — Review über drei Runden konvergiert (Runde 3, Codex GPT-6 Sol mit Live-Lauf: „bestanden", keine neuen Befunde); **Betreiber-Freigabe ausstehend.** Die Bau-KI öffnet kein Gate.
+> **Status: FREIGEGEBEN (Betreiber, 25.09.2026)** — Review über drei Runden konvergiert (Runde 3, Codex GPT-6 Sol mit Live-Lauf: „bestanden"); Merge per Pull Request #16 nach `master` (`b60c81d`) nach grüner CI. Die Bau-KI hat das Gate nicht geöffnet.
 
 ## 1. Kopf
 
 - **Code:** VV-M05 (+ BASIS-02-Kern, P50-8)
 - **Name:** Mitglieder (Mitglieder-CRM)
-- **Version:** 1.3 (Phase 1 + Reparaturrunden 1 und 2, Review konvergiert)
+- **Version:** 1.4 (Phase 1 — freigegeben)
 - **Datum:** 24.09.2026
 - **Verantwortlich:** Bau-KI Claude Code + Opus 5.5 (Stufe hoch) · Prüf-KI GPT-5.x Codex + Gemini 3.x Pro (ausstehend) · Freigabe Betreiber
-- **Status/Gate:** in_bau · Gate 1 (M05) **gesperrt bis Review + Betreiber-Freigabe**
+- **Status/Gate:** **freigegeben** · Gate 1 (M05) durch Betreiber-Entscheidung geöffnet (25.09.2026, PR #16 → `master` `b60c81d`)
 - **Grundlage:** Bau-Auftrag v1.1 (Projektordner, `VV_M05_Bau-Auftrag.md`) · Register P50 · Repair-Auftrag Sicherheitsbefunde + Befund-Bewertung (Register P52) · [project.json-Fragment](../../project/fragments/VV-M05.project.json)
 
 ## 2. Was
@@ -137,6 +137,7 @@ Der Verein weiß jederzeit, wer seit wann in welcher Art Mitglied ist — mit l�
 
 ## 9. Änderungshistorie
 
+- 25.09.2026 — v1.4: **M05-FREIGABE (Betreiber)** — Merge Pull Request #16 `feat/m05-mitglieder` → `master` (`b60c81d`) nach 23/23 grünen Checks; erste CI/CodeQL auf `master` grün (R6 wirksam). Register P56, K22.
 - 25.09.2026 — v1.3: **Bestätigungs-Review Runde 3** (Codex GPT-6 Sol, Live-Lauf Docker/WSL) auf `d3f3027`: **bestanden, keine neuen Befunde**, R2-Fixes live bestätigt → Review konvergiert ([Einstufung](../../evidence/m05/review-r3/einstufung.md)). **M05-Freigabe = Betreiber-Entscheidung.**
 - 25.09.2026 — v1.2: **Review Runde 2 + Reparaturrunde 2** (Register P53/P54): Codex GPT-6 Sol + Gemini 3.1 Pro; H-1, H-2, M-1, M-2, N-1, R6-Probe behoben (8 neue Gegenproben, rot gegen alten Stand); C-1 als Design-Grenze/Restrisiko (Betreiber), Stage-1-Pflicht vor S3. M05 137/137, Stage-0 37/37. **Bestätigungs-Review + Freigabe ausstehend.**
 - 24.09.2026 — v1.1: **Reparaturrunde 1 / Sicherheits-Retrofit** (Register P52, Bezug P48/P49): R1–R8 aus dem Repair-Auftrag + Gemini G-1–G-3 verifiziert, eingestuft und behoben (Migration 0011, Worker/Web/Validator-Selbsttest); Stage-0-Kern (Audit, Freigabe, Outbox, CI-Trigger) nachgehärtet, durch die M05-Freigabe gedeckt. Gegenproben M05 133/133, Stage-0 33/33, Selbsttest 14/14. **Formales Vier-Augen-Review (Codex-Modell nach Kalibrierung) + Freigabe ausstehend.**
