@@ -7,6 +7,7 @@ UND mindestens eine Policy. WP5-gehärtet gegen die im Review gefundenen Umgehun
 from __future__ import annotations
 import re
 import glob
+from pathlib import Path
 from ..common import REPO, CheckResult, Finding, strip_sql_comments
 
 CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)\s*\((.*?)\)\s*;",
@@ -59,7 +60,7 @@ def run() -> CheckResult:
     files = sorted(glob.glob(str(REPO / "db" / "migrations" / "*.sql")))
     if not files:
         res.findings.append(Finding("ADR-01", False, "keine Migrationen gefunden")); return res
-    result = analyze([open(p, encoding="utf-8").read() for p in files])
+    result = analyze([Path(p).read_text(encoding="utf-8") for p in files])
     if not result:
         res.findings.append(Finding("ADR-01", False, "keine mandantenbezogene Tabelle (tenant_id) erkannt")); return res
     for t, miss in result.items():

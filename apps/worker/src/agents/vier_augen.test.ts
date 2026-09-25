@@ -83,8 +83,9 @@ test("ADVERSARIAL R2/B-03) kein Handler vom Aufrufer: nicht-bindende ID kann kei
   const pay = async () => { paid = true; return "PAID"; };
   // Früherer Angriff: executeBindingEffect("reminder.dispatch", ctx, store, pay) lief OHNE Freigabe.
   // Die API nimmt keinen Handler mehr; ein zusätzliches Argument wird ignoriert.
-  await assert.rejects(() => (executeBindingEffect as any)("reminder.dispatch", ctx, store, pay), /nicht bindend/);
-  await assert.rejects(() => (exec.execute as any)("reminder.dispatch", ctx, store, pay), /nicht bindend/);
+  // Reflect.apply: das überzählige Argument ist hier ABSICHT (Angriffs-Simulation), kein Aufruffehler.
+  await assert.rejects(() => Reflect.apply(executeBindingEffect, undefined, ["reminder.dispatch", ctx, store, pay]), /nicht bindend/);
+  await assert.rejects(() => Reflect.apply(exec.execute, exec, ["reminder.dispatch", ctx, store, pay]), /nicht bindend/);
   assert.equal(paid, false);
   // Registry lässt sich nicht nachträglich verbiegen:
   assert.throws(() => createExecutor({ "reminder.dispatch": pay }), /nicht als bindende Handler-Senke/);

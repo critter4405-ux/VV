@@ -15,6 +15,7 @@ beim Modul-Bau (dann sind DB-Schreibzugriffe technisch erst nach der Policy-Ents
 from __future__ import annotations
 import glob
 import os
+from pathlib import Path
 import re
 from ..common import REPO, CheckResult, Finding
 
@@ -192,7 +193,7 @@ def run() -> CheckResult:
 
     for path in sorted(actions):
         rel = os.path.relpath(path, REPO)
-        probs = check_actions(open(path, encoding="utf-8").read())
+        probs = check_actions(Path(path).read_text(encoding="utf-8"))
         res.findings.append(Finding("ADR-04", not probs,
             f"{rel}: " + ("; ".join(probs) if probs else "jede exportierte Aktion: checkPolicy() + Guard vor DB-Zugriff")))
 

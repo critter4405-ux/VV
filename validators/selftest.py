@@ -107,11 +107,27 @@ expect("K29: leeres classDiagram wird ROT", _mermaid_problem("```mermaid\nclassD
 # R6/H-14 (M05-Reparaturrunde 1): CI + CodeQL müssen auf dem REALEN Hauptbranch auslösen.
 # Realer Hauptbranch = `master` (git); zusätzlich `main` als Migrationsziel. Ohne YAML-Abhängigkeit:
 # den push.branches-Block zeilengenau lesen.
-import re as _re
 def _push_branches(path: str) -> list[str]:
-    txt = open(path, encoding="utf-8").read()
-    m = _re.search(r"^on:\s*\n(?:[ \t]+.*\n|\s*\n)*?[ \t]+push:\s*\n(?:[ \t]+#.*\n)*[ \t]+branches:\s*\[([^\]]*)\]", txt, _re.M)
-    return [b.strip().strip('"\'') for b in m.group(1).split(",")] if m else []
+    """Liest `on: → push: → branches: [..]` zeilenweise (kein Regex-Backtracking, CodeQL py/redos)."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    in_on = in_push = False
+    for ln in lines:
+        body = ln.split("#", 1)[0].rstrip()
+        if not body.strip():
+            continue
+        indent = len(body) - len(body.lstrip())
+        key = body.strip()
+        if indent == 0:
+            in_on, in_push = key == "on:", False
+        elif in_on and key == "push:":
+            in_push = True
+        elif in_on and in_push and key.startswith("branches:") and "[" in key and "]" in key:
+            inner = key[key.index("[") + 1:key.rindex("]")]
+            return [b.strip().strip('"\'') for b in inner.split(",") if b.strip()]
+        elif in_on and key.endswith(":") and not key.startswith("branches"):
+            in_push = key == "push:"
+    return []
 # Review R2: feste Hauptbranch-Menge — nicht aus origin/HEAD ableiten (ein Klon eines Klons erbt dort
 # einen Feature-Branch und würde die Probe fälschlich rot machen).
 _mains = {"master", "main"}

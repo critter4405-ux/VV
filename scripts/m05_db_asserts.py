@@ -10,7 +10,6 @@ Ausschließlich SYNTHETISCHE Daten (K31). Exit 0 = alle Erwartungen erfüllt.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -502,7 +501,7 @@ def main() -> int:
         run(WK, "SELECT m05_execute(%s)", (appr_a,), tenant=BB)
         ok_iso = False
     except psycopg.Error:
-        pass
+        ok_iso = True          # erwartet: fremder Mandant sieht die Freigabe nicht (Fehler = Isolation wirkt)
     check("Worker im fremden Mandanten findet die Freigabe nicht", ok_iso)
 
     # ---------------------------------------------------------------- Import (AK-11)
