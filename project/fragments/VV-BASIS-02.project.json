@@ -2,9 +2,9 @@
   "code": "VV-BASIS-02",
   "name": "Rollen & Rechte",
   "kind": "basis",
-  "version": "0.1",
-  "status": "skeleton",
-  "gate": 0,
+  "version": "0.2",
+  "status": "in_bau",
+  "gate": 1,
   "adr": [
     "ADR-04",
     "ADR-01"
@@ -14,6 +14,26 @@
     {
       "name": "role_assignment",
       "tenant_scoped": true
+    },
+    {
+      "name": "scope_node",
+      "tenant_scoped": true
+    },
+    {
+      "name": "principal_link",
+      "tenant_scoped": true
+    },
+    {
+      "name": "role_type",
+      "tenant_scoped": false
+    },
+    {
+      "name": "role_permission",
+      "tenant_scoped": false
+    },
+    {
+      "name": "sod_rule",
+      "tenant_scoped": false
     }
   ],
   "gates": [
@@ -24,12 +44,22 @@
         "evidence/stage-0/gate0-checklist.md",
         "docs/bausteine/VV-BASIS-02.md"
       ]
+    },
+    {
+      "id": 1,
+      "title": "BASIS-02-Kern (mit M05 gebaut, P50-8) — Bau-Nachweise, Freigabe ausstehend",
+      "evidence": [
+        "evidence/m05/gate-m05-checklist.md",
+        "evidence/m05/db-asserts.txt",
+        "docs/bausteine/VV-BASIS-02.md"
+      ]
     }
   ],
   "register_refs": [
     "Q03",
     "B02-1",
-    "B02-2"
+    "B02-2",
+    "P50"
   ],
   "module": {
     "name": "BASIS-02 RBAC",

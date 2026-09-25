@@ -49,8 +49,28 @@ try:
       "  await pool.query(\"UPDATE person SET status='x'\");\n"
       "  return { ok:true };\n}\n")
 
+    # M05-Bau: zweite, ungeschützte Aktion in derselben Datei + Helfer-Aufruf VOR dem Guard
+    w("_st_multi.action.ts",
+      'import { checkPolicy } from "../../platform/policy.ts";\n'
+      'import { pool } from "../../db.ts";\n'
+      'async function helper(){ return pool.query("SELECT m05_apply(1)"); }\n'
+      'export async function ok1(c:any){\n'
+      '  const decision = await checkPolicy(c);\n  if (!decision.allowed) { return 1; }\n  return helper();\n}\n'
+      'export async function unguarded(c:any){\n  return helper();\n}\n'
+      'export async function early(c:any){\n  await helper();\n'
+      '  const decision = await checkPolicy(c);\n  if (!decision.allowed) { return 1; }\n  return 2;\n}\n')
+    # Fachbefehl (DB-Funktion) außerhalb einer *.action.ts
+    w("_st_bypass.ts", 'import { pool } from "../../db.ts";\nexport const x = () => pool.query("SELECT m05_admit($1,$2,$3)");\n')
+
     from validators.checks import adr02_imports as a2, adr04_policy as a4
     r2 = a2.run(); r4 = a4.run()
+    multi = [f for f in r4.findings if "_st_multi" in f.detail]
+    expect("ADR-04: zweite ungeschützte Aktion je Datei wird ROT",
+           any(not f.ok and "unguarded()" in f.detail for f in multi))
+    expect("ADR-04: Helfer-/DB-Zugriff vor dem Guard wird ROT",
+           any(not f.ok and "early()" in f.detail and "VOR dem Policy-Guard" in f.detail for f in multi))
+    expect("ADR-04: DB-Fachbefehl außerhalb *.action.ts wird ROT",
+           any("_st_bypass" in f.detail and not f.ok for f in r4.findings))
     expect("ADR-02: dyn. import(`../${x}/...`) wird ROT", any("_st_tpl" in f.detail and not f.ok for f in r2.findings))
     expect("ADR-04: String-Decoy-Guard wird ROT", any("_st_decoy" in f.detail and not f.ok for f in r4.findings))
     expect("ADR-04: Destrukturierung mit echtem Guard bleibt GRÜN", any("_st_ok" in f.detail and f.ok for f in r4.findings))
@@ -71,10 +91,49 @@ expect("K31: Archiv-PII wird ROT", any(not f.ok for f in gr.findings))
 expect("K31: kein Klartext-Leak (Dateiname/IBAN maskiert)", (MAIL not in out) and (IBAN not in out))
 os.remove(z)
 
+# ADR-01 (M05-Bau): Reihenfolge der Policy-Statements zählt.
+from validators.checks.adr01_rls import analyze
+T = "CREATE TABLE t (id int, tenant_id uuid); ALTER TABLE t ENABLE ROW LEVEL SECURITY; ALTER TABLE t FORCE ROW LEVEL SECURITY; "
+expect("ADR-01: idempotentes DROP IF EXISTS + CREATE POLICY bleibt GRÜN",
+       analyze([T + "DROP POLICY IF EXISTS p ON t; CREATE POLICY p ON t USING (true);"])["t"] == [])
+expect("ADR-01: CREATE POLICY gefolgt von DROP POLICY wird ROT",
+       analyze([T + "CREATE POLICY p ON t USING (true); DROP POLICY p ON t;"])["t"] != [])
+
 # Mermaid: kaputt/leer wird abgelehnt.
 from validators.checks.k29_dossier import _mermaid_problem
 expect("K29: unbalanciertes Mermaid wird ROT", _mermaid_problem("```mermaid\nflowchart TB\n A[x --> B\n```") is not None)
 expect("K29: leeres classDiagram wird ROT", _mermaid_problem("```mermaid\nclassDiagram\n```") is not None)
+
+# R6/H-14 (M05-Reparaturrunde 1): CI + CodeQL müssen auf dem REALEN Hauptbranch auslösen.
+# Realer Hauptbranch = `master` (git); zusätzlich `main` als Migrationsziel. Ohne YAML-Abhängigkeit:
+# den push.branches-Block zeilengenau lesen.
+def _push_branches(path: str) -> list[str]:
+    """Liest `on: → push: → branches: [..]` zeilenweise (kein Regex-Backtracking, CodeQL py/redos)."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    in_on = in_push = False
+    for ln in lines:
+        body = ln.split("#", 1)[0].rstrip()
+        if not body.strip():
+            continue
+        indent = len(body) - len(body.lstrip())
+        key = body.strip()
+        if indent == 0:
+            in_on, in_push = key == "on:", False
+        elif in_on and key == "push:":
+            in_push = True
+        elif in_on and in_push and key.startswith("branches:") and "[" in key and "]" in key:
+            inner = key[key.index("[") + 1:key.rindex("]")]
+            return [b.strip().strip('"\'') for b in inner.split(",") if b.strip()]
+        elif in_on and key.endswith(":") and not key.startswith("branches"):
+            in_push = key == "push:"
+    return []
+# Review R2: feste Hauptbranch-Menge — nicht aus origin/HEAD ableiten (ein Klon eines Klons erbt dort
+# einen Feature-Branch und würde die Probe fälschlich rot machen).
+_mains = {"master", "main"}
+for _wf in (".github/workflows/ci.yml", ".github/workflows/codeql.yml"):
+    _b = _push_branches(_wf)
+    expect(f"R6: {_wf} push-Trigger deckt realen Hauptbranch ({', '.join(sorted(_mains))})", _mains.issubset(set(_b)))
 
 fails = [n for n, ok in R if not ok]
 print("-" * 60)

@@ -7,7 +7,7 @@ import { writeAudit } from "../../platform/audit.ts";
 import { pool } from "../../db.ts";
 
 export async function listPersons(ctx: { tenantId: string; actor: string; scopeNode: string }) {
-  const decision = checkPolicy({
+  const decision = await checkPolicy({
     tenantId: ctx.tenantId,
     actor: ctx.actor,
     resource: "person",
@@ -24,9 +24,9 @@ export async function listPersons(ctx: { tenantId: string; actor: string; scopeN
       const { rows } = await client.query(
         "SELECT id, last_name, first_name, status FROM person ORDER BY last_name",
       );
-      await writeAudit(client, { tenantId: ctx.tenantId, actor: ctx.actor, action: "person.list" });
+      await writeAudit(client, { action: "app.person.list" });
       return { ok: true as const, rows };
-    });
+    }, ctx.actor);
   } finally {
     client.release();
   }

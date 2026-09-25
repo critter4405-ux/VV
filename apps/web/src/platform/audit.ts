@@ -1,18 +1,16 @@
-// VV Platform — Audit-Schreiber (ADR-05, BASIS-03), WP2-gehärtet.
-// Review-Befund Codex #6 / Gemini B: Hash-Kette darf NICHT im App-Layer per read-then-write
-// gebildet werden (Race/Fork). Sie wird jetzt DB-seitig im Trigger `vv_audit_chain` unter
-// per-Mandant-Advisory-Lock berechnet (siehe 0003_audit_outbox.sql). Der App-Schreiber fügt
-// nur die Fachfelder ein — in DERSELBEN Transaktion wie die Datenänderung (withTenant).
+// VV Platform — Audit-Schreiber (ADR-05, BASIS-03).
+// Hash-Kette wird DB-seitig im Trigger `vv_audit_chain` gebildet (fork-frei, Advisory-Lock).
+// M05-Reparaturrunde 1 (R1/B-02): Die App darf NICHT mehr direkt in audit_log schreiben (vorher konnte
+// vv_app Actor/Aktion/Zeit frei setzen und per OVERRIDING SYSTEM VALUE die id erzwingen). Jetzt nur
+// noch über vv_audit_log(): Actor = transaktionsgebundener app.actor (verifizierte OIDC-Claims, via
+// withTenant), Serverzeit, reservierte Fach-Präfixe gesperrt — erlaubt sind nur `app.*` / `policy.*`.
 import type { PoolClient } from "pg";
 
 export async function writeAudit(
   client: PoolClient,
-  entry: { tenantId: string; actor: string; action: string; subjectRef?: string; payload?: unknown },
+  entry: { action: `app.${string}` | `policy.${string}`; subjectRef?: string; payload?: unknown },
 ): Promise<void> {
-  await client.query(
-    `INSERT INTO audit_log (tenant_id, actor, action, subject_ref, payload)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [entry.tenantId, entry.actor, entry.action, entry.subjectRef ?? null, entry.payload ?? {}],
-  );
-  // prev_hash/entry_hash werden vom BEFORE-INSERT-Trigger gesetzt (kanonisch, fork-frei).
+  // Muss INNERHALB von withTenant(client, tenantId, fn, actor) laufen (Tenant + Actor gesetzt).
+  await client.query("SELECT vv_audit_log($1, $2, $3::jsonb)",
+    [entry.action, entry.subjectRef ?? null, JSON.stringify(entry.payload ?? {})]);
 }
