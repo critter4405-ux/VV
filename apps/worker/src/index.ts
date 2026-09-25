@@ -2,7 +2,7 @@
 // pg-boss für getriggerte Jobs + realer Outbox-Consumer (FOR UPDATE SKIP LOCKED via
 // SECURITY-DEFINER-Funktion). Kein Job überschreitet autonom eine harte Grenze — er legt
 // ein Freigabe-Objekt an (Vier-Augen, siehe agents/vier_augen.ts).
-import PgBoss from "pg-boss";
+import { PgBoss } from "pg-boss";
 import { writeFileSync } from "node:fs";
 import { claimOutbox, markOutboxDone, markOutboxFail, pool } from "./db.ts";
 import { handleM05Outbox, runM05Daily, M05_TOPICS } from "./jobs/m05.ts";
@@ -44,8 +44,11 @@ async function pollOutbox() {
 }
 
 async function main() {
-  // pg-boss im eigenen Schema (Eigentümer vv_worker) — kein DB-weites CREATE nötig (Codex #3-new).
-  const boss = new PgBoss({ connectionString: process.env.WORKER_DATABASE_URL, schema: "pgboss" });
+  // pg-boss im eigenen Schema (Eigentümer vv_worker). Das Schema installiert die DB-Migration
+  // 0012_pgboss_schema.sql (generiert, Register P57) — der Worker installiert/migriert NICHT selbst
+  // (dafür bräuchte er das Datenbank-CREATE-Recht), sondern prüft nur die Schema-Version und
+  // bricht bei Abweichung ab (fail-closed; neues pg-boss = neue Migration).
+  const boss = new PgBoss({ connectionString: process.env.WORKER_DATABASE_URL, schema: "pgboss", migrate: false });
   boss.on("error", (err) => console.error("[vv-worker] pg-boss error:", err));
   await boss.start();
 

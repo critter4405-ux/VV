@@ -5,25 +5,40 @@ Fragment deklariert sein (fehlende Deklaration = Fail). Infra-Tabellen sind expl
 from __future__ import annotations
 import re
 import glob
+from pathlib import Path
 from ..common import REPO, CheckResult, Finding, load_fragments, strip_sql_comments
 
-CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)", re.IGNORECASE)
+CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:([A-Za-z_]\w*)\.)?([A-Za-z_]\w*)(?![\w.])", re.IGNORECASE)
 INFRA = {"tenant"}  # Stammtabelle, keinem Baustein zugeordnet (bewusst)
+# Fremd-Infrastruktur-Schema (pg-boss, ADR-06): Tabellen darin sind keine Fachdaten und werden NUR
+# über die generierte Migration *_pgboss_schema.sql angelegt (scripts/gen_pgboss_schema.mjs, P57).
+# Anderswo angelegte pgboss.*-Tabellen sind ein Verstoß (kein Schlupfloch für undeklarierte Tabellen).
+INFRA_SCHEMA = "pgboss"
+INFRA_SCHEMA_FILE = re.compile(r"^\d{4}_pgboss_schema\.sql$")
 
 
 def run() -> CheckResult:
     res = CheckResult(name="project.json ↔ reale Tabellen (Abgleich)", adr="ADR-09")
     created: set[str] = set()
+    ok = True
     for p in sorted(glob.glob(str(REPO / "db" / "migrations" / "*.sql"))):
-        sql = strip_sql_comments(open(p, encoding="utf-8").read())
-        created.update(m.group(1).lower() for m in CREATE_TABLE.finditer(sql))
+        sql = strip_sql_comments(Path(p).read_text(encoding="utf-8"))
+        fname = Path(p).name
+        for m in CREATE_TABLE.finditer(sql):
+            schema, table = (m.group(1) or "").lower(), m.group(2).lower()
+            if schema == INFRA_SCHEMA:
+                if not INFRA_SCHEMA_FILE.match(fname):
+                    ok = False
+                    res.findings.append(Finding("ADR-09", False,
+                        f"{fname}: Tabelle {schema}.{table} außerhalb der generierten pg-boss-Migration"))
+                continue
+            created.add(table)
 
     declared: dict[str, list[str]] = {}
     for f in load_fragments():
         for t in f.get("tables", []):
             declared.setdefault(t["name"].lower(), []).append(f.get("code"))
 
-    ok = True
     for t in sorted(created):
         if t in INFRA:
             continue

@@ -9,7 +9,6 @@
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": "src",
     "types": ["node"]
   },
   "include": ["src"]

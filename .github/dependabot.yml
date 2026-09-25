@@ -6,10 +6,20 @@ updates:
     directory: /apps/web
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      # Typen folgen der Laufzeit (Node 22 LTS in Dockerfile + CI). Major-Sprung nur zusammen mit
+      # einem bewussten Laufzeit-Wechsel (P57), sonst kompilieren Aufrufe, die Node 22 nicht kennt.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /apps/worker
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      # Typen folgen der Laufzeit (Node 22 LTS in Dockerfile + CI). Major-Sprung nur zusammen mit
+      # einem bewussten Laufzeit-Wechsel (P57), sonst kompilieren Aufrufe, die Node 22 nicht kennt.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /validators
     schedule: { interval: weekly }
@@ -18,6 +28,10 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    groups:
+      # Alle Actions in EINEM PR (sonst driften z. B. codeql-action/init und /analyze auseinander, P57).
+      actions:
+        patterns: ["*"]
   # Container-Images (docker-compose): hält die auf @sha256-Digest gepinnten Images aktuell.
   - package-ecosystem: docker
     directory: /
