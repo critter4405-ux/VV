@@ -52,3 +52,19 @@ Befund C-1 (Review M05 Runde 2): Mit den DB-Zugangsdaten der Web-App (`vv_app`) 
 ## Weiteres Vorgehen
 
 Die Befunde beider Prüfer werden eingestuft, dem Betreiber vorgelegt und in **einer** konsolidierten Reparaturrunde behoben (Bau-KI), gegen echte PostgreSQL 16 nachgewiesen und erneut geprüft — bis zur Konvergenz. **Die Freigabe (Merge per Pull Request) ist ausschließlich eine Betreiber-Entscheidung.**
+
+---
+
+## Runde 2 — Bestätigungs-Review (nach konsolidierter Reparatur R1)
+
+> **Prüfstand:** Commit der Reparatur R1 auf `feat/c1-kontext-signatur` (siehe `git log -1`; Vorgänger `c696df5`). Einstufungen und Berichte R1: `evidence/c1/review-r1/`. Nachweise: `evidence/c1/verification.md` (Abschnitt „Reparatur Review R1“).
+
+**Auftrag:** Prüfe, ob die R1-Befunde **wirksam und ohne Nebenwirkung** geschlossen sind. Suche außerdem nach **neuen** Lücken, die durch die Reparatur entstanden sind. Die übrigen Prüfpunkte 1–12 gelten weiter. Eine volle Wiederholung ist nur nötig, wo die Reparatur sie berührt.
+
+1. **H-01 (Ablauf gegen die reale Uhr):** Lässt sich ein Kontext nach `exp` noch nutzen? Zu probieren: eine Protokollnachricht, `DO`-Block, Cursor (`DECLARE … CURSOR`, auch `WITH HOLD`, `FETCH` nach Ablauf), Extended-Protocol/Pipelining, Savepoints, Funktionen in Policies/Triggern, lange Einzelabfragen, `LATERAL`/SRF-Tricks und verbindliche Aktionen nach Ablauf. Sind die Kontextfunktionen als `plpgsql` + `SECURITY DEFINER` + `search_path = pg_catalog, pg_temp` ohne Schatten-Risiko? Führt `STABLE` mit `clock_timestamp()` irgendwo zu einem verwertbaren Zustand? Liefern Listen bei Ablauf mitten in der Abfrage **nie** eine still gekürzte Liste (`vv_ctx_require_valid`)?
+2. **M-01:** Verbraucht `m05_decide_proposal` das Ticket? Fehlt noch eine verbindliche Aktion? Ist die Begründung für die direkten Status-Befehle im Dossier (§2) tragfähig?
+3. **N-01/N-02/N-03:** Werden doppelte Schlüssel verweigert? Prüft die neue Probe den echten Pfad App → Definer? Ist der verschärfte Validator frei von Fehlalarmen, und stimmt die Live-Invariante zum M05-Fachkontext?
+4. **CI/E-1:** Ist die Testkorrektur (frische Tickets) keine Abschwächung? Ist die Leistungsmessung (`evidence/c1/perf.md`, Nachtrag) nachvollziehbar?
+5. **G2/G3:** Sind Restrisiken und Zeitsync-Auflage richtig eingeordnet (Dossier §3/§6)? Betreiber-Entscheidung: **keine** Toleranz auf `exp`.
+
+**Rückgabe** wie Runde 1, als `REVIEW-C1-<Modell>-R2.md`: Gesamturteil, Befunde nach Schwere mit Reproduktion und eine Bestätigung je R1-Befund („geschlossen“ / „nicht geschlossen“ / „teilweise“).
