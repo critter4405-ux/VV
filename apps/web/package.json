@@ -11,7 +11,7 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "jose": "^5.9.6",
+    "jose": "^6.2.12",
     "pg": "^8.13.0",
     "tsx": "^4.19.0"
   },
