@@ -63,7 +63,8 @@ def run() -> CheckResult:
     for path in glob.glob(str(MODULES_DIR / "**" / "*.ts"), recursive=True):
         rel = os.path.relpath(path, MODULES_DIR)
         current = rel.split(os.sep)[0]
-        src = strip_ts_comments(open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as fh:
+            src = strip_ts_comments(fh.read())
         # Fail-closed: dynamischer import() mit nicht-statischem Argument ist nicht verifizierbar.
         dyn = _dynamic_import_violation(src)
         if dyn:

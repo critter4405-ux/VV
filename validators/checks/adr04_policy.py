@@ -203,7 +203,8 @@ def run() -> CheckResult:
     for path in sorted(ts):
         rel = os.path.relpath(path, REPO).replace("\\", "/")
         allowed = rel.endswith(".action.ts") or rel in WRITE_ALLOWLIST
-        base = _blank_comments(open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as fh:
+            base = _blank_comments(fh.read())
         if WRITE.search(base) and not allowed:
             res.findings.append(Finding("ADR-04", False,
                 f"{rel}: DB-Schreibzugriff/Fachbefehl außerhalb *.action.ts/Allowlist (umgeht Policy)"))

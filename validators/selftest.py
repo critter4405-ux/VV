@@ -24,7 +24,10 @@ PDIR = "apps/web/src/modules/person"
 os.makedirs(PDIR, exist_ok=True)
 made: list[str] = []
 def w(name: str, text: str) -> None:
-    p = os.path.join(PDIR, name); open(p, "w", encoding="utf-8").write(text); made.append(p)
+    p = os.path.join(PDIR, name)
+    with open(p, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    made.append(p)
 
 # Muster zur Laufzeit bauen (kein Literal im Quelltext -> kein Selbst-K31-Treffer).
 IBAN = "AT" + "61190430023457320" + "1"
@@ -76,8 +79,10 @@ try:
     expect("ADR-04: Destrukturierung mit echtem Guard bleibt GRÜN", any("_st_ok" in f.detail and f.ok for f in r4.findings))
 finally:
     for p in made:
-        try: os.remove(p)
-        except OSError: pass
+        try:
+            os.remove(p)
+        except OSError:
+            pass  # Probe-Datei bereits entfernt — Aufräumen ist best effort
 
 # K31/Guard: Archiv mit PII im Dateinamen + Inhalt -> ROT, aber maskiert (kein Klartext).
 z = os.path.join(tempfile.gettempdir(), "vv_selftest.zip")
@@ -90,6 +95,14 @@ out = "\n".join(f.detail for f in gr.findings)
 expect("K31: Archiv-PII wird ROT", any(not f.ok for f in gr.findings))
 expect("K31: kein Klartext-Leak (Dateiname/IBAN maskiert)", (MAIL not in out) and (IBAN not in out))
 os.remove(z)
+# Aufräum-PR (CodeQL): „Archiv“-Endung ohne ZIP-Inhalt wurde still übersprungen -> jetzt als Rohtext geprüft.
+fz = os.path.join(tempfile.mkdtemp(prefix="vv_selftest_"), "export.xlsx")
+with open(fz, "w", encoding="utf-8") as fh:
+    fh.write("Name;IBAN\nMuster;" + IBAN + "\n")
+gr2 = CheckResult(name="t", adr="K31"); g._scan_archive(fz, "export.xlsx", gr2)
+out2 = "\n".join(f.detail for f in gr2.findings)
+expect("K31: falsche Archiv-Endung (Text als .xlsx) wird ROT, maskiert", any(not f.ok for f in gr2.findings) and IBAN not in out2)
+os.remove(fz); os.rmdir(os.path.dirname(fz))
 
 # ADR-01 (M05-Bau): Reihenfolge der Policy-Statements zählt.
 from validators.checks.adr01_rls import analyze
@@ -103,6 +116,10 @@ expect("ADR-01: CREATE POLICY gefolgt von DROP POLICY wird ROT",
 from validators.checks.k29_dossier import _mermaid_problem
 expect("K29: unbalanciertes Mermaid wird ROT", _mermaid_problem("```mermaid\nflowchart TB\n A[x --> B\n```") is not None)
 expect("K29: leeres classDiagram wird ROT", _mermaid_problem("```mermaid\nclassDiagram\n```") is not None)
+expect("K29: classDiagram mit Beziehung bleibt GRÜN (ohne Regex geprüft)",
+       _mermaid_problem("```mermaid\nclassDiagram\n  A <|-- B\n```") is None)
+expect("K29: Flowchart ohne Kante wird ROT (ohne Regex geprüft)",
+       _mermaid_problem("```mermaid\nflowchart TB\n  A[x]\n  B[y]\n```") is not None)
 
 # R6/H-14 (M05-Reparaturrunde 1): CI + CodeQL müssen auf dem REALEN Hauptbranch auslösen.
 # Realer Hauptbranch = `master` (git); zusätzlich `main` als Migrationsziel. Ohne YAML-Abhängigkeit:
@@ -145,8 +162,10 @@ try:
     expect("P57: pgboss-Tabelle außerhalb der generierten Migration wird ROT",
            any(not f.ok and "9999_selftest_probe.sql" in f.detail for f in _r.findings))
 finally:
-    try: os.remove(_probe)
-    except OSError: pass
+    try:
+        os.remove(_probe)
+    except OSError:
+        pass  # Probe-Migration bereits entfernt — Aufräumen ist best effort
 _r2 = _pr.run()
 expect("P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)",
        all(f.ok for f in _r2.findings if "pgboss" in f.detail))
@@ -157,20 +176,25 @@ from validators.checks import c1_context as _c1
 _c1dir = os.path.join("apps", "web", "src", "modules", "person")
 _c1files = {n: os.path.join(_c1dir, n) for n in ("_st_c1_guc.ts", "_st_c1_ok.ts", "_st_c1_key.ts", "_st_c1_setlocal.ts",
                                                   "_st_c1_dyn.ts", "_st_c1_subtle.ts")}
+def _wf(path: str, text: str) -> None:
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
 try:
-    open(_c1files["_st_c1_guc.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_guc.ts"], 
         'export const q = (c: any, t: string) => c.query("SELECT set_config(' + "'app.tenant_id'" + ', $1, true)", [t]);\n')
-    open(_c1files["_st_c1_ok.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_ok.ts"], 
         "// früher: set_config('app.tenant_id') — heute nur vv_set_context(ticket)\nexport const ok = 1;\n")
-    open(_c1files["_st_c1_key.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_key.ts"], 
         'import { createHmac } from "node:crypto";\nexport const s = (k: Buffer) => createHmac("sha256", k);\n')
-    open(_c1files["_st_c1_setlocal.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_setlocal.ts"], 
         'export const q = (c: any) => c.query("SET LOCAL app.actor = ' + "'x'" + '");\n')
     # Review R1 (Codex N-03): dynamisch gebauter GUC-Name + WebCrypto-Schlüsselmaterial
-    open(_c1files["_st_c1_dyn.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_dyn.ts"], 
         "const name = 'app.' + 'tenant_id';\nexport const q = (c: any, t: string) => "
         "c.query('SELECT set_config($1,$2,true)', [name, t]);\n")
-    open(_c1files["_st_c1_subtle.ts"], "w", encoding="utf-8").write(
+    _wf(_c1files["_st_c1_subtle.ts"], 
         "export const k = (raw: ArrayBuffer) => crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);\n")
     _f = _c1.static_findings()
     expect("C-1/R1: dynamisch gebauter GUC-Name (set_config($1…)) wird ROT", any(not f.ok and "_st_c1_dyn" in f.detail for f in _f))
@@ -193,8 +217,10 @@ try:
            all(f.ok for f in _c1.static_findings(files=[]) ))
 finally:
     for _p in _c1files.values():
-        try: os.remove(_p)
-        except OSError: pass
+        try:
+            os.remove(_p)
+        except OSError:
+            pass  # Probe-Datei bereits entfernt — Aufräumen ist best effort
 
 fails = [n for n, ok in R if not ok]
 print("-" * 60)

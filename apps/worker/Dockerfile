@@ -4,4 +4,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
+# Heartbeat-Ordner (Healthcheck) — eigener Ordner statt /tmp, nur für den Prozess-Nutzer.
+RUN mkdir -p /run/vv-worker && chmod 700 /run/vv-worker
 CMD ["npm", "start"]

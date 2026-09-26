@@ -13,6 +13,9 @@ PLACEHOLDER = re.compile(r"\(zu füllen beim Bau\)", re.IGNORECASE)
 LINK = re.compile(r"\]\(([^)]+)\)")
 
 
+# Mermaid-classDiagram: Beziehungen/Member als feste Zeichenfolgen (kein Regex — CodeQL py/bad-tag-filter).
+CLASS_TOKENS = ("<|--", "*--", "o--", "-->", "..>", ":")
+
 def _mermaid_problem(text: str) -> str | None:
     """Strengere Mermaid-Grundprüfung (Review-Runde 2, Codex #5-new: vorher nur Muster).
     Gibt None zurück, wenn ok, sonst eine kurze Fehlerbeschreibung."""
@@ -35,7 +38,7 @@ def _mermaid_problem(text: str) -> str | None:
         closes = sum(1 for ln in lines if ln == "end")
         if opens != closes:
             return f"unbalancierte subgraph/end ({opens} subgraph vs. {closes} end)"
-        if not re.search(r"-->|---|-\.->|==>", body):
+        if not any(edge in body for edge in ("-->", "---", "-.->", "==>")):
             return "keine gültige Kante (-->/---/==>) im Flowchart"
     elif lines[0].startswith("sequenceDiagram"):
         if "->>" not in body and "-->>" not in body:
@@ -45,7 +48,7 @@ def _mermaid_problem(text: str) -> str | None:
         content = [ln for ln in lines[1:] if ln]
         if not content:
             return "leeres classDiagram (keine Klassen/Beziehungen)"
-        if not any(re.search(r"(<\|--|\*--|o--|-->|\.\.>|:|\bclass\b)", ln) for ln in content):
+        if not any(any(tok in ln for tok in CLASS_TOKENS) or "class" in ln.split() for ln in content):
             return "classDiagram ohne Klassen/Member/Beziehungen"
     elif lines[0].startswith("stateDiagram"):
         if not any("-->" in ln for ln in lines[1:]):

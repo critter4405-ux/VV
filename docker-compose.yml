@@ -139,7 +139,7 @@ services:
         condition: service_healthy
     # Heartbeat-Healthcheck (WP4/Review #11): Worker schreibt eine Datei je Tick.
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/vv-worker-alive && find /tmp/vv-worker-alive -mmin -1 | grep -q ."]
+      test: ["CMD-SHELL", "test -f /run/vv-worker/alive && find /run/vv-worker/alive -mmin -1 | grep -q ."]
       interval: 30s
       timeout: 5s
       retries: 5

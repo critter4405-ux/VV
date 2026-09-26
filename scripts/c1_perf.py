@@ -44,8 +44,9 @@ res = {}
 for mode in (False, True):
     ts, n, plan = [], 0, ""
     for _ in range(7):
-        with BOOT.transaction():
-            cur = BOOT.cursor()
+        cur = BOOT.cursor()
+        cur.execute("BEGIN")
+        try:
             if mode:
                 cur.execute("ALTER POLICY person_tenant_isolation ON person USING (tenant_id = vv_current_tenant()) "
                             "WITH CHECK (tenant_id = vv_current_tenant())")
@@ -54,7 +55,8 @@ for mode in (False, True):
             a = time.perf_counter(); cur.execute("SELECT count(*) FROM person"); n = cur.fetchone()[0]
             ts.append((time.perf_counter() - a) * 1000)
             cur.execute("EXPLAIN SELECT count(*) FROM person"); plan = " / ".join(r[0].strip() for r in cur.fetchall())
-            raise psycopg.Rollback()          # Messung verwerfen (ALTER POLICY darf nicht bleiben)
+        finally:
+            cur.execute("ROLLBACK")          # Messung verwerfen (ALTER POLICY darf nicht bleiben)
     res[mode] = (statistics.median(ts), n, plan)
 
 def list_persons():

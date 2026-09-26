@@ -492,34 +492,33 @@ def main() -> int:
     # N-02: Antragsteller-Bindung auf dem ECHTEN Pfad App -> Definer-Funktion (Testfunktion, zurückgerollt).
     tsp = tk(AA, SCHRIFT)
     res: list[str] = []
+    cur = BOOT.cursor()
+    cur.execute("BEGIN")   # alles in EINER Transaktion, am Ende zurückgerollt (auch SET SESSION AUTHORIZATION)
     try:
-        with BOOT.transaction():
-            cur = BOOT.cursor()
-            cur.execute("""CREATE FUNCTION public.c1_probe_approval(p_req text) RETURNS void LANGUAGE sql
-                           SECURITY DEFINER SET search_path = public, pg_temp AS $f$
-                           INSERT INTO approval (tenant_id, kind, effect_id, subject_ref, requested_by)
-                           VALUES (vv_current_tenant(), 'deletion', 'person.delete', 'c1-r1-probe', p_req) $f$""")
-            cur.execute("ALTER FUNCTION public.c1_probe_approval(text) OWNER TO vv_definer")
-            cur.execute("GRANT EXECUTE ON FUNCTION public.c1_probe_approval(text) TO vv_app")
-            cur.execute("SET SESSION AUTHORIZATION vv_app")
-            cur.execute("SELECT session_user::text, vv_set_context(%s) IS NOT NULL", (tsp,))
-            res.append(cur.fetchone()[0])
-            cur.execute("SAVEPOINT s1")
-            try:
-                cur.execute("SELECT public.c1_probe_approval(%s)", (SCHRIFT,))
-                res.append("eigener-ok")
-            except psycopg.Error as ex:
-                res.append("eigener-FEHLER:" + str(ex).split("\n")[0])
-            cur.execute("ROLLBACK TO SAVEPOINT s1")
-            try:
-                cur.execute("SELECT public.c1_probe_approval(%s)", (VORSTAND,))
-                res.append("fremd-ANGENOMMEN")
-            except psycopg.Error as ex:
-                res.append("fremd-verweigert" if "Spoofing" in str(ex) else "fremd:" + str(ex).split("\n")[0])
-            cur.execute("ROLLBACK TO SAVEPOINT s1")
-            raise psycopg.Rollback()
+        cur.execute("""CREATE FUNCTION public.c1_probe_approval(p_req text) RETURNS void LANGUAGE sql
+                       SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+                       INSERT INTO approval (tenant_id, kind, effect_id, subject_ref, requested_by)
+                       VALUES (vv_current_tenant(), 'deletion', 'person.delete', 'c1-r1-probe', p_req) $f$""")
+        cur.execute("ALTER FUNCTION public.c1_probe_approval(text) OWNER TO vv_definer")
+        cur.execute("GRANT EXECUTE ON FUNCTION public.c1_probe_approval(text) TO vv_app")
+        cur.execute("SET SESSION AUTHORIZATION vv_app")
+        cur.execute("SELECT session_user::text, vv_set_context(%s) IS NOT NULL", (tsp,))
+        res.append(cur.fetchone()[0])
+        cur.execute("SAVEPOINT s1")
+        try:
+            cur.execute("SELECT public.c1_probe_approval(%s)", (SCHRIFT,))
+            res.append("eigener-ok")
+        except psycopg.Error as ex:
+            res.append("eigener-FEHLER:" + str(ex).split("\n")[0])
+        cur.execute("ROLLBACK TO SAVEPOINT s1")
+        try:
+            cur.execute("SELECT public.c1_probe_approval(%s)", (VORSTAND,))
+            res.append("fremd-ANGENOMMEN")
+        except psycopg.Error as ex:
+            res.append("fremd-verweigert" if "Spoofing" in str(ex) else "fremd:" + str(ex).split("\n")[0])
+        cur.execute("ROLLBACK TO SAVEPOINT s1")
     finally:
-        BOOT.execute("RESET SESSION AUTHORIZATION") if not BOOT.closed else None
+        cur.execute("ROLLBACK")
     left_fn = boot("SELECT count(*) FROM pg_proc WHERE proname = 'c1_probe_approval'")[0][0]
     check("R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)",
           res == ["vv_app", "eigener-ok", "fremd-verweigert"] and left_fn == 0, f"{res} rest={left_fn}")
