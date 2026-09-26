@@ -20,6 +20,13 @@ updates:
       # einem bewussten Laufzeit-Wechsel (P57), sonst kompilieren Aufrufe, die Node 22 nicht kennt.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: /apps/ticket          # C-1 Ticket-Dienst (jose)
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /validators
     schedule: { interval: weekly }

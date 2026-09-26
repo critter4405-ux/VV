@@ -8,7 +8,7 @@ import glob
 from pathlib import Path
 from ..common import REPO, CheckResult, Finding, load_fragments, strip_sql_comments
 
-CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:([A-Za-z_]\w*)\.)?([A-Za-z_]\w*)(?![\w.])", re.IGNORECASE)
+CREATE_TABLE = re.compile(r"CREATE\s+(?:(?:GLOBAL|LOCAL)\s+)?(?:UNLOGGED\s+|TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:([A-Za-z_]\w*)\.)?([A-Za-z_]\w*)(?![\w.])", re.IGNORECASE)
 INFRA = {"tenant"}  # Stammtabelle, keinem Baustein zugeordnet (bewusst)
 # Fremd-Infrastruktur-Schema (pg-boss, ADR-06): Tabellen darin sind keine Fachdaten und werden NUR
 # über die generierte Migration *_pgboss_schema.sql angelegt (scripts/gen_pgboss_schema.mjs, P57).

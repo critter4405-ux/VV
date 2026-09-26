@@ -3,7 +3,9 @@
 -- Läuft als Bootstrap (Onboarding-Pfad): Vereins-Wurzel, Principal-Bindungen, Start-Rollen.
 
 -- ---------------- Mandant A (Demo FC) ----------------
-SELECT set_config('app.tenant_id', '00000000-0000-0000-0000-0000000000aa', false);
+-- C-1: geprüfter Bootstrap-Kontext (Superuser) statt frei setzbarer GUC; eine Transaktion je Seed.
+BEGIN;
+SELECT vv_bootstrap_context('00000000-0000-0000-0000-0000000000aa', 'system:seed');
 
 INSERT INTO person (id, tenant_id, last_name, first_name, birth_date, status) VALUES
   ('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000aa', 'Admin',     'Ada',    '1980-02-02', 'active'),
@@ -64,7 +66,7 @@ CROSS JOIN LATERAL (SELECT coalesce(scope_raw,
 ON CONFLICT (id) DO NOTHING;
 
 -- ---------------- Mandant B (für Isolationstests) ----------------
-SELECT set_config('app.tenant_id', '00000000-0000-0000-0000-0000000000bb', false);
+SELECT vv_bootstrap_context('00000000-0000-0000-0000-0000000000bb', 'system:seed');
 INSERT INTO person (id, tenant_id, last_name, first_name, birth_date, status) VALUES
   ('b0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000bb', 'Badmin', 'Bea', '1981-01-01', 'active')
 ON CONFLICT (id) DO NOTHING;
@@ -76,4 +78,4 @@ SELECT 'b1b00000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000
   FROM scope_node WHERE tenant_id = '00000000-0000-0000-0000-0000000000bb' AND parent_id IS NULL
 ON CONFLICT (id) DO NOTHING;
 
-RESET app.tenant_id;
+COMMIT;

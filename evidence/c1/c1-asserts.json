@@ -1,0 +1,339 @@
+{
+  "run": "7f2084",
+  "passed": true,
+  "total": 83,
+  "results": [
+    {
+      "name": "DoD1: P54-Repro 1 — set_config(tenant B) + SELECT person als vv_app verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD1: frei gesetzte GUCs wirken nicht (vv_current_tenant/vv_actor bleiben leer)",
+      "ok": true
+    },
+    {
+      "name": "DoD1: gefälschter Kontext öffnet auch über Funktionen nichts (0 Zeilen / deny)",
+      "ok": true
+    },
+    {
+      "name": "DoD1: P54-Repro 2a — Antrag nur per set_config(actor) verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD1: P54-Repro 2b — Antragsteller + Freigeber in EINER Verbindung per set_config verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD1: Identitätswechsel innerhalb einer Transaktion per zweitem Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD1: keine Freigabe entstanden (Rollback)",
+      "ok": true
+    },
+    {
+      "name": "DoD2: vv_app hat KEIN direktes Tabellen-/Spalten-/Sequenzrecht (alle Schemata)",
+      "ok": true
+    },
+    {
+      "name": "DoD2/6: vv_worker hat kein direktes Recht auf Fachtabellen (nur eigenes pgboss-Schema)",
+      "ok": true
+    },
+    {
+      "name": "DoD2: vv_app kann keine gleichnamigen Objekte anlegen (kein CREATE in Schemata, kein TEMP/CREATE auf DB)",
+      "ok": true
+    },
+    {
+      "name": "DoD2: Schatten-Tabelle pg_temp.vv_ctx nicht anlegbar",
+      "ok": true
+    },
+    {
+      "name": "DoD2: vv_app darf exakt die Positivliste ausführen (keine weiteren Funktionen)",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Mitgliederliste",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Personenliste",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Rollenliste",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Offene Freigaben",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Export",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Audit-Eintrag",
+      "ok": true
+    },
+    {
+      "name": "DoD2: ohne Ticket kein Zugriff — Mitgliedsart anlegen",
+      "ok": true
+    },
+    {
+      "name": "DoD2: Kontext-/Schlüsseltabelle weder für vv_app noch für die Fachfunktions-Rolle lesbar",
+      "ok": true
+    },
+    {
+      "name": "DoD2: keine DB-Funktion liest/setzt mehr eine GUC app.* (Kontext nur geprüft)",
+      "ok": true
+    },
+    {
+      "name": "RLS-Leistung: alle Mandanten-Policies werten den Kontext als InitPlan aus (einmal je Abfrage)",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — falsche Signatur",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — unbekannte Schlüssel-Kennung",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — manipulierte Nutzlast (Mandant B, alte Signatur)",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — abgelaufenes exp",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — Gültigkeit > 60 s",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — iat in der Zukunft",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — Systemakteur im Ticket",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — unbekannter Mandant",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — zusätzliches Feld",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — fehlendes jti",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — fremder Schlüssel (richtige Kennung)",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — Versionspräfix v2",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — leeres Ticket",
+      "ok": true
+    },
+    {
+      "name": "DoD3: verweigert — Überlänge",
+      "ok": true
+    },
+    {
+      "name": "DoD3: gültiges Ticket setzt genau Mandant + Akteur aus der Nutzlast",
+      "ok": true
+    },
+    {
+      "name": "DoD3: abgelaufenes Ticket verliert den Kontext auch mitten in einer Transaktion",
+      "ok": true
+    },
+    {
+      "name": "DoD4: Ticket für A zeigt nur A, Ticket für B nur B",
+      "ok": true
+    },
+    {
+      "name": "DoD4: Nutzer aus B mit Ticket für Mandant A hat dort keine Rechte",
+      "ok": true
+    },
+    {
+      "name": "DoD4: M05-Lesesicht mit A-Ticket enthält keine B-Personen",
+      "ok": true
+    },
+    {
+      "name": "DoD5: Lesen innerhalb von 60 s mehrfach möglich (3 Transaktionen, selbes Ticket)",
+      "ok": true
+    },
+    {
+      "name": "DoD5: zweite verbindliche Aktion mit demselben Ticket verweigert (Export)",
+      "ok": true
+    },
+    {
+      "name": "DoD5: verbrauchtes Einmal-Ticket öffnet keinen Kontext mehr",
+      "ok": true
+    },
+    {
+      "name": "DoD5: zwei verbindliche Aktionen in EINER Transaktion mit einem Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD5: …Rollback gibt das Ticket wieder frei (nur erfolgreiche Aktionen verbrauchen)",
+      "ok": true
+    },
+    {
+      "name": "DoD5: parallel — von zwei gleichzeitigen verbindlichen Aktionen mit einem Ticket gewinnt genau eine",
+      "ok": true
+    },
+    {
+      "name": "DoD5: Freigabe/Ablehnung verbraucht das Ticket (zweite Entscheidung verweigert)",
+      "ok": true
+    },
+    {
+      "name": "DoD5: …Entscheidung bleibt die erste (abgelehnt)",
+      "ok": true
+    },
+    {
+      "name": "R1/M-01: zwei Aging-up-Entscheidungen mit EINEM Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/M-01: …erste Entscheidung wirkt, zweite mit demselben Ticket verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD5: alle 9 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern",
+      "ok": true
+    },
+    {
+      "name": "DoD5: Kernfunktionen (ohne Einmal-Prüfung) sind für App/Worker nicht aufrufbar",
+      "ok": true
+    },
+    {
+      "name": "DoD6: vv_worker darf exakt die feste Systemfunktions-Liste ausführen",
+      "ok": true
+    },
+    {
+      "name": "DoD6: keine Überschneidung Nutzer-Funktionen ↔ Worker-Funktionen",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Worker verweigert — Nutzer-Ticket",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Worker verweigert — Nutzer-Funktion Liste",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Worker verweigert — Nutzer-Funktion Freigabe",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Worker verweigert — Bootstrap-Kontext",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Worker-Akteur ist fest 'system:worker' (Systemkontext)",
+      "ok": true
+    },
+    {
+      "name": "DoD6: App kann weder System- noch Bootstrap-Kontext setzen (Mensch nur mit Ticket)",
+      "ok": true
+    },
+    {
+      "name": "DoD6: Systemkontext kann strukturell keinen menschlichen Akteur tragen (CHECK)",
+      "ok": true
+    },
+    {
+      "name": "DoD7: Wechsel per Betreiber-Skript (neue Kennung im Keyring)",
+      "ok": true
+    },
+    {
+      "name": "DoD7: Übergangszeit — alter UND neuer Schlüssel gültig",
+      "ok": true
+    },
+    {
+      "name": "DoD7: aktiver Signaturschlüssel kann nicht versehentlich deaktiviert werden",
+      "ok": true
+    },
+    {
+      "name": "DoD7: nach Deaktivierung wird der alte Schlüssel verweigert, der neue gilt",
+      "ok": true
+    },
+    {
+      "name": "DoD7: Geheimnis des deaktivierten Schlüssels gelöscht",
+      "ok": true
+    },
+    {
+      "name": "DoD7: jeder Schritt im Audit jedes Mandanten (added/rotate/transition/disabled)",
+      "ok": true
+    },
+    {
+      "name": "DoD7: Audit enthält nie das Geheimnis",
+      "ok": true
+    },
+    {
+      "name": "DoD7: nach Ende der Übergangszeit (valid_until) wird der alte Schlüssel verweigert",
+      "ok": true
+    },
+    {
+      "name": "DoD7: Schlüsselverwaltung nur für den Betreiber",
+      "ok": true
+    },
+    {
+      "name": "Housekeeping: abgelaufene Einmal-Kennungen werden entfernt (Worker-Systemfunktion)",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Mehrfachnachricht (eine Protokollnachricht) liest nach Ablauf nichts mehr",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: DO-Block (ein Statement) liest nach Ablauf nichts mehr",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: verbindliche Aktion nach Ablauf im DO-Block verweigert, nichts angelegt",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Kontrolle — innerhalb der Frist funktioniert derselbe DO-Block",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: abgelaufener Kontext liefert bei Listen einen Fehler statt einer (gekürzten) Liste",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Listen mit zeilenweiser Berechtigung prüfen den Kontext am Ende erneut (3 Funktionen)",
+      "ok": true
+    },
+    {
+      "name": "R1/H-01: Kontext-/Einmal-Prüfung nutzen ausschließlich die reale Uhr (clock_timestamp)",
+      "ok": true
+    },
+    {
+      "name": "R1/N-01: doppelter Schlüssel in der Nutzlast verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/G3: Uhrversatz — iat bis +5 s angenommen (+4 s ok), darüber verweigert (+6 s)",
+      "ok": true
+    },
+    {
+      "name": "R1/G3: exp ohne Toleranz — Ticket mit exp = jetzt verweigert",
+      "ok": true
+    },
+    {
+      "name": "R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)",
+      "ok": true
+    }
+  ]
+}

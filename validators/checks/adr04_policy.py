@@ -23,7 +23,9 @@ SRC = REPO / "apps" / "web" / "src"
 WRITE = re.compile(r"\b(INSERT\s+INTO|UPDATE\s+[A-Za-z_]\w*\s+SET|DELETE\s+FROM)\b"
                    # M05-Bau: Fachbefehle laufen als DB-Funktionen (SELECT m05_x(...)/rbac_x(...)) — sie zählen
                    # wie Schreibzugriffe und sind nur aus *.action.ts (nach dem Policy-Guard) erlaubt.
-                   r"|\bSELECT\s+(?:\*\s+FROM\s+)?(?:m05|rbac)_\w+\s*\(", re.IGNORECASE)
+                   r"|\bSELECT\s+(?:\*\s+FROM\s+)?(?:m05|rbac|basis\d\d)_\w+\s*\("
+                   # C-1: geprüfte Lesefunktionen (SELECT spalten FROM basis01_x()) zählen ebenfalls.
+                   r"|\bFROM\s+(?:m05|rbac|basis\d\d)_\w+\s*\(", re.IGNORECASE)
 # Pro exportierter Aktion (M05-Bau: vorher prüfte der Validator nur den ERSTEN Guard je Datei —
 # eine zweite, ungeschützte Aktion in derselben Datei blieb grün).
 FUNC_START = re.compile(r"^(export\s+)?(?:async\s+)?function\s+(\w+)\s*[<(]", re.MULTILINE)

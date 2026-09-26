@@ -6,6 +6,10 @@
 
 - **VV-M05 Mitglieder** — in_bau, Gate 1 (Review + Freigabe ausstehend): [Dossier (MD)](bausteine/VV-M05.md) · [HTML](bausteine/VV-M05.html)
 
+## Sicherheit
+
+- **VV-SEC-01 Kontext-Signatur (Ticket-Dienst, C-1)** — in_bau, Gate 1 (Review + Freigabe ausstehend): [Dossier (MD)](bausteine/VV-SEC-01.md) · [HTML](bausteine/VV-SEC-01.html)
+
 ## Fundament
 
 - **Stage 0 — Fundament-Gerüst** — freigegeben (P48): [Dossier (MD)](bausteine/STAGE-0.md) · [HTML](bausteine/STAGE-0.html)

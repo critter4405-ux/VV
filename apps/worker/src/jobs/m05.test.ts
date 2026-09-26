@@ -9,7 +9,7 @@ function fakeDb(opts: { fail?: boolean } = {}) {
     async query(sql: string, p?: unknown[]) {
       log.push(sql + (p ? " " + JSON.stringify(p) : ""));
       if (opts.fail && sql.includes("m05_execute")) throw new Error("M05: verweigert");
-      if (sql.startsWith("SELECT id FROM tenant")) return { rows: [{ id: "00000000-0000-0000-0000-0000000000aa" }] };
+      if (sql.includes("FROM vv_worker_tenants()")) return { rows: [{ id: "00000000-0000-0000-0000-0000000000aa" }] };
       return { rows: [{ r: { ok: true } }] };
     },
     release() { log.push("release"); },
@@ -36,7 +36,9 @@ test("ungültige approval_id / Tenant -> fail-closed, kein DB-Zugriff", async ()
 test("Ausführung in Transaktion mit Tenant-Kontext; Fehler -> ROLLBACK + Wurf (Retry/DLQ)", async () => {
   const ok = fakeDb();
   assert.equal(await handleM05Outbox({ id: "x", tenant_id: T, topic: "m05.execute", payload: { approval_id: A } }, ok.db), true);
-  assert.ok(ok.log[0] === "BEGIN" && ok.log[1]!.includes(T) && ok.log.includes("COMMIT"));
+  assert.ok(ok.log[0] === "BEGIN" && ok.log[1]!.startsWith("SELECT vv_worker_context") && ok.log[1]!.includes(T)
+    && ok.log.includes("COMMIT"), "C-1: Systemkontext (vv_worker_context), keine GUC");
+  assert.ok(!ok.log.some((l) => l.includes("set_config")), "keine frei setzbare GUC mehr");
   const bad = fakeDb({ fail: true });
   await assert.rejects(handleM05Outbox({ id: "x", tenant_id: T, topic: "m05.execute", payload: { approval_id: A } }, bad.db));
   assert.ok(bad.log.includes("ROLLBACK") && !bad.log.includes("COMMIT"));

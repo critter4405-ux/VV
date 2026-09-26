@@ -1,0 +1,53 @@
+{
+  "code": "VV-SEC-01",
+  "name": "Kontext-Signatur (Ticket-Dienst, C-1)",
+  "kind": "core",
+  "version": "1.0",
+  "status": "in_bau",
+  "gate": 1,
+  "adr": [
+    "ADR-01",
+    "ADR-03",
+    "ADR-04",
+    "ADR-05",
+    "ADR-07",
+    "ADR-09",
+    "ADR-11"
+  ],
+  "dossier": "docs/bausteine/VV-SEC-01.md",
+  "module": null,
+  "tables": [
+    {
+      "name": "ticket_key",
+      "tenant_scoped": false
+    },
+    {
+      "name": "ticket_used",
+      "tenant_scoped": false
+    },
+    {
+      "name": "vv_ctx",
+      "tenant_scoped": false
+    }
+  ],
+  "gates": [
+    {
+      "id": 1,
+      "title": "C-1 Kontext-Signatur — Bau verifiziert, Vier-Augen-Review + Betreiber-Freigabe (PR) ausstehend",
+      "evidence": [
+        "evidence/c1/verification.md",
+        "evidence/c1/gate-c1-checklist.md",
+        "docs/bausteine/VV-SEC-01.md"
+      ]
+    }
+  ],
+  "register_refs": [
+    "P54",
+    "P58",
+    "P57",
+    "K34",
+    "K36",
+    "B09-1",
+    "B10-1"
+  ]
+}

@@ -1,13 +1,13 @@
 // VV Modul M05 „Mitglieder" — HTTP-API (Routing + Validierung). Keine DB-Zugriffe hier:
-// alles läuft über mitglieder.action.ts (Policy-Guard). Der Principal (tenantId/actor) stammt
-// ausschließlich aus dem verifizierten OIDC-Token (verifyBearer), nie aus Body/Query.
+// alles läuft über mitglieder.action.ts (Policy-Guard). Der Principal (tenantId/actor/ticket) stammt
+// ausschließlich aus dem verifizierten OIDC-Token bzw. dem Ticket-Dienst, nie aus Body/Query.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import * as A from "./mitglieder.action.ts";
 import * as S from "./mitglieder.schema.ts";
 
 const MAX_BODY = 64 * 1024;
 
-export interface Principal { tenantId: string; actor: string }
+export interface Principal { tenantId: string; actor: string; ticket: string }
 
 type Handler = (ctx: A.Ctx, p: string[], body: unknown, q: URLSearchParams) => Promise<A.Result<unknown>>;
 
@@ -53,7 +53,7 @@ export const ROUTES: Route[] = [
     h: (c, p, b) => A.decideImport(c, p[0]!, S.parseDecision(b)) },
 ];
 
-const STATUS: Record<A.ErrorKind, number> = { forbidden: 403, not_found: 404, conflict: 409, invalid: 400, internal: 500 };
+const STATUS: Record<A.ErrorKind, number> = { unauthorized: 401, forbidden: 403, not_found: 404, conflict: 409, invalid: 400, internal: 500 };
 
 export function match(method: string, path: string): { route: Route; params: string[] } | null {
   for (const r of ROUTES) {
@@ -95,7 +95,8 @@ export async function handleM05(req: IncomingMessage, res: ServerResponse, princ
   if (!hit) { send(res, 404, { ok: false, error: "not_found" }); return true; }
   try {
     const body = await readJson(req);
-    const result = await hit.route.h({ tenantId: principal.tenantId, actor: principal.actor }, hit.params, body, url.searchParams);
+    const result = await hit.route.h({ tenantId: principal.tenantId, actor: principal.actor, ticket: principal.ticket },
+      hit.params, body, url.searchParams);
     send(res, result.ok ? 200 : STATUS[result.error], result);
   } catch (err) {
     if (err instanceof S.ValidationError) send(res, 400, { ok: false, error: "invalid", reason: err.message });

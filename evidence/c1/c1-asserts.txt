@@ -1,0 +1,86 @@
+== C-1 Kontext-Signatur: DB-Gegenproben (Lauf 2f8130) ==
+  [OK ] DoD1: P54-Repro 1 — set_config(tenant B) + SELECT person als vv_app verweigert
+  [OK ] DoD1: frei gesetzte GUCs wirken nicht (vv_current_tenant/vv_actor bleiben leer)
+  [OK ] DoD1: gefälschter Kontext öffnet auch über Funktionen nichts (0 Zeilen / deny)
+  [OK ] DoD1: P54-Repro 2a — Antrag nur per set_config(actor) verweigert
+  [OK ] DoD1: P54-Repro 2b — Antragsteller + Freigeber in EINER Verbindung per set_config verweigert
+  [OK ] DoD1: Identitätswechsel innerhalb einer Transaktion per zweitem Ticket verweigert
+  [OK ] DoD1: keine Freigabe entstanden (Rollback)
+  [OK ] DoD2: vv_app hat KEIN direktes Tabellen-/Spalten-/Sequenzrecht (alle Schemata)
+  [OK ] DoD2/6: vv_worker hat kein direktes Recht auf Fachtabellen (nur eigenes pgboss-Schema)
+  [OK ] DoD2: vv_app kann keine gleichnamigen Objekte anlegen (kein CREATE in Schemata, kein TEMP/CREATE auf DB)
+  [OK ] DoD2: Schatten-Tabelle pg_temp.vv_ctx nicht anlegbar
+  [OK ] DoD2: vv_app darf exakt die Positivliste ausführen (keine weiteren Funktionen)
+  [OK ] DoD2: ohne Ticket kein Zugriff — Mitgliederliste
+  [OK ] DoD2: ohne Ticket kein Zugriff — Personenliste
+  [OK ] DoD2: ohne Ticket kein Zugriff — Rollenliste
+  [OK ] DoD2: ohne Ticket kein Zugriff — Offene Freigaben
+  [OK ] DoD2: ohne Ticket kein Zugriff — Export
+  [OK ] DoD2: ohne Ticket kein Zugriff — Audit-Eintrag
+  [OK ] DoD2: ohne Ticket kein Zugriff — Mitgliedsart anlegen
+  [OK ] DoD2: Kontext-/Schlüsseltabelle weder für vv_app noch für die Fachfunktions-Rolle lesbar
+  [OK ] DoD2: keine DB-Funktion liest/setzt mehr eine GUC app.* (Kontext nur geprüft)
+  [OK ] RLS-Leistung: alle Mandanten-Policies werten den Kontext als InitPlan aus (einmal je Abfrage)
+  [OK ] DoD3: verweigert — falsche Signatur
+  [OK ] DoD3: verweigert — unbekannte Schlüssel-Kennung
+  [OK ] DoD3: verweigert — manipulierte Nutzlast (Mandant B, alte Signatur)
+  [OK ] DoD3: verweigert — abgelaufenes exp
+  [OK ] DoD3: verweigert — Gültigkeit > 60 s
+  [OK ] DoD3: verweigert — iat in der Zukunft
+  [OK ] DoD3: verweigert — Systemakteur im Ticket
+  [OK ] DoD3: verweigert — unbekannter Mandant
+  [OK ] DoD3: verweigert — zusätzliches Feld
+  [OK ] DoD3: verweigert — fehlendes jti
+  [OK ] DoD3: verweigert — fremder Schlüssel (richtige Kennung)
+  [OK ] DoD3: verweigert — Versionspräfix v2
+  [OK ] DoD3: verweigert — leeres Ticket
+  [OK ] DoD3: verweigert — Überlänge
+  [OK ] DoD3: gültiges Ticket setzt genau Mandant + Akteur aus der Nutzlast
+  [OK ] DoD3: abgelaufenes Ticket verliert den Kontext auch mitten in einer Transaktion
+  [OK ] DoD4: Ticket für A zeigt nur A, Ticket für B nur B
+  [OK ] DoD4: Nutzer aus B mit Ticket für Mandant A hat dort keine Rechte
+  [OK ] DoD4: M05-Lesesicht mit A-Ticket enthält keine B-Personen
+  [OK ] DoD5: Lesen innerhalb von 60 s mehrfach möglich (3 Transaktionen, selbes Ticket)
+  [OK ] DoD5: zweite verbindliche Aktion mit demselben Ticket verweigert (Export)
+  [OK ] DoD5: verbrauchtes Einmal-Ticket öffnet keinen Kontext mehr
+  [OK ] DoD5: zwei verbindliche Aktionen in EINER Transaktion mit einem Ticket verweigert
+  [OK ] DoD5: …Rollback gibt das Ticket wieder frei (nur erfolgreiche Aktionen verbrauchen)
+  [OK ] DoD5: parallel — von zwei gleichzeitigen verbindlichen Aktionen mit einem Ticket gewinnt genau eine
+  [OK ] DoD5: Freigabe/Ablehnung verbraucht das Ticket (zweite Entscheidung verweigert)
+  [OK ] DoD5: …Entscheidung bleibt die erste (abgelehnt)
+  [OK ] R1/M-01: zwei Aging-up-Entscheidungen mit EINEM Ticket verweigert
+  [OK ] R1/M-01: …erste Entscheidung wirkt, zweite mit demselben Ticket verweigert
+  [OK ] DoD5: alle 9 verbindlichen Befehle verbrauchen das Ticket vor dem fachlichen Kern
+  [OK ] DoD5: Kernfunktionen (ohne Einmal-Prüfung) sind für App/Worker nicht aufrufbar
+  [OK ] DoD6: vv_worker darf exakt die feste Systemfunktions-Liste ausführen
+  [OK ] DoD6: keine Überschneidung Nutzer-Funktionen ↔ Worker-Funktionen
+  [OK ] DoD6: Worker verweigert — Nutzer-Ticket
+  [OK ] DoD6: Worker verweigert — Nutzer-Funktion Liste
+  [OK ] DoD6: Worker verweigert — Nutzer-Funktion Freigabe
+  [OK ] DoD6: Worker verweigert — Bootstrap-Kontext
+  [OK ] DoD6: Worker-Akteur ist fest 'system:worker' (Systemkontext)
+  [OK ] DoD6: App kann weder System- noch Bootstrap-Kontext setzen (Mensch nur mit Ticket)
+  [OK ] DoD6: Systemkontext kann strukturell keinen menschlichen Akteur tragen (CHECK)
+  [OK ] DoD7: Wechsel per Betreiber-Skript (neue Kennung im Keyring)
+  [OK ] DoD7: Übergangszeit — alter UND neuer Schlüssel gültig
+  [OK ] DoD7: aktiver Signaturschlüssel kann nicht versehentlich deaktiviert werden
+  [OK ] DoD7: nach Deaktivierung wird der alte Schlüssel verweigert, der neue gilt
+  [OK ] DoD7: Geheimnis des deaktivierten Schlüssels gelöscht
+  [OK ] DoD7: jeder Schritt im Audit jedes Mandanten (added/rotate/transition/disabled)
+  [OK ] DoD7: Audit enthält nie das Geheimnis
+  [OK ] DoD7: nach Ende der Übergangszeit (valid_until) wird der alte Schlüssel verweigert
+  [OK ] DoD7: Schlüsselverwaltung nur für den Betreiber
+  [OK ] Housekeeping: abgelaufene Einmal-Kennungen werden entfernt (Worker-Systemfunktion)
+  [OK ] R1/H-01: Mehrfachnachricht (eine Protokollnachricht) liest nach Ablauf nichts mehr
+  [OK ] R1/H-01: DO-Block (ein Statement) liest nach Ablauf nichts mehr
+  [OK ] R1/H-01: verbindliche Aktion nach Ablauf im DO-Block verweigert, nichts angelegt
+  [OK ] R1/H-01: Kontrolle — innerhalb der Frist funktioniert derselbe DO-Block
+  [OK ] R1/H-01: abgelaufener Kontext liefert bei Listen einen Fehler statt einer (gekürzten) Liste
+  [OK ] R1/H-01: Listen mit zeilenweiser Berechtigung prüfen den Kontext am Ende erneut (3 Funktionen)
+  [OK ] R1/H-01: Kontext-/Einmal-Prüfung nutzen ausschließlich die reale Uhr (clock_timestamp)
+  [OK ] R1/N-01: doppelter Schlüssel in der Nutzlast verweigert
+  [OK ] R1/G3: Uhrversatz — iat bis +5 s angenommen (+4 s ok), darüber verweigert (+6 s)
+  [OK ] R1/G3: exp ohne Toleranz — Ticket mit exp = jetzt verweigert
+  [OK ] R1/N-02: App→Definer-Pfad — eigener Akteur als Antragsteller ok, fremder verweigert (Trigger-Guard)
+----------------------------------------------------------------------
+C-1-Gegenproben: 83/83 erfüllt

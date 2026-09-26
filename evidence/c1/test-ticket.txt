@@ -1,0 +1,140 @@
+
+> @vv/ticket@0.1.0 test
+> node --import tsx --test "src/**/*.test.ts"
+
+TAP version 13
+# Subtest: gültiges Access-Token -> Ticket im DB-Format, HMAC stimmt, ≤ 60 s, genau t/s/iat/exp/jti
+ok 1 - gültiges Access-Token -> Ticket im DB-Format, HMAC stimmt, ≤ 60 s, genau t/s/iat/exp/jti
+  ---
+  duration_ms: 25.325957
+  type: 'test'
+  ...
+# Subtest: jede Ausstellung hat eine eigene Ticket-Kennung (jti)
+ok 2 - jede Ausstellung hat eine eigene Ticket-Kennung (jti)
+  ---
+  duration_ms: 7.37783
+  type: 'test'
+  ...
+# Subtest: Ticket überlebt nie das Access-Token (exp = min)
+ok 3 - Ticket überlebt nie das Access-Token (exp = min)
+  ---
+  duration_ms: 5.45984
+  type: 'test'
+  ...
+# Subtest: abgewiesen: fremder Signaturschlüssel
+ok 4 - abgewiesen: fremder Signaturschlüssel
+  ---
+  duration_ms: 4.770636
+  type: 'test'
+  ...
+# Subtest: abgewiesen: falscher Issuer
+ok 5 - abgewiesen: falscher Issuer
+  ---
+  duration_ms: 3.135552
+  type: 'test'
+  ...
+# Subtest: abgewiesen: falsche Audience
+ok 6 - abgewiesen: falsche Audience
+  ---
+  duration_ms: 5.014234
+  type: 'test'
+  ...
+# Subtest: abgewiesen: abgelaufen
+ok 7 - abgewiesen: abgelaufen
+  ---
+  duration_ms: 4.32093
+  type: 'test'
+  ...
+# Subtest: abgewiesen: zu alt (Wiederverwendung abgefangener Tokens begrenzt)
+ok 8 - abgewiesen: zu alt (Wiederverwendung abgefangener Tokens begrenzt)
+  ---
+  duration_ms: 3.747545
+  type: 'test'
+  ...
+# Subtest: abgewiesen: ID-Token statt Access-Token
+ok 9 - abgewiesen: ID-Token statt Access-Token
+  ---
+  duration_ms: 3.494522
+  type: 'test'
+  ...
+# Subtest: abgewiesen: Refresh-Token
+ok 10 - abgewiesen: Refresh-Token
+  ---
+  duration_ms: 3.241871
+  type: 'test'
+  ...
+# Subtest: abgewiesen: ohne tenant_id
+ok 11 - abgewiesen: ohne tenant_id
+  ---
+  duration_ms: 2.64141
+  type: 'test'
+  ...
+# Subtest: abgewiesen: tenant_id keine UUID
+ok 12 - abgewiesen: tenant_id keine UUID
+  ---
+  duration_ms: 4.087621
+  type: 'test'
+  ...
+# Subtest: abgewiesen: Systemakteur als sub
+ok 13 - abgewiesen: Systemakteur als sub
+  ---
+  duration_ms: 2.168426
+  type: 'test'
+  ...
+# Subtest: abgewiesen: HS256 mit öffentlichem Schlüssel als Geheimnis
+ok 14 - abgewiesen: HS256 mit öffentlichem Schlüssel als Geheimnis
+  ---
+  duration_ms: 3.076142
+  type: 'test'
+  ...
+# Subtest: abgewiesen: alg none
+ok 15 - abgewiesen: alg none
+  ---
+  duration_ms: 1.844313
+  type: 'test'
+  ...
+# Subtest: ohne Bearer / falsche Methode / falscher Pfad
+ok 16 - ohne Bearer / falsche Methode / falscher Pfad
+  ---
+  duration_ms: 12.191021
+  type: 'test'
+  ...
+# Subtest: Keyring weg -> 503 (fail-closed), Health meldet 503
+ok 17 - Keyring weg -> 503 (fail-closed), Health meldet 503
+  ---
+  duration_ms: 14.701288
+  type: 'test'
+  ...
+# Subtest: Rate-Limit je Nutzer greift (429)
+ok 18 - Rate-Limit je Nutzer greift (429)
+  ---
+  duration_ms: 32.472752
+  type: 'test'
+  ...
+# Subtest: Protokoll enthält nie Token oder Ticket
+ok 19 - Protokoll enthält nie Token oder Ticket
+  ---
+  duration_ms: 2.290712
+  type: 'test'
+  ...
+# Subtest: Ticket-Bausteine: Systemakteur/ungültiger Mandant/abgelaufenes Token werden nicht signiert
+ok 20 - Ticket-Bausteine: Systemakteur/ungültiger Mandant/abgelaufenes Token werden nicht signiert
+  ---
+  duration_ms: 0.364074
+  type: 'test'
+  ...
+# Subtest: Keyring-Parser: nur gültige Kennung/Länge
+ok 21 - Keyring-Parser: nur gültige Kennung/Länge
+  ---
+  duration_ms: 0.20835
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 578.721731

@@ -1,0 +1,27 @@
+  [OK ] ADR-04: zweite ungeschützte Aktion je Datei wird ROT
+  [OK ] ADR-04: Helfer-/DB-Zugriff vor dem Guard wird ROT
+  [OK ] ADR-04: DB-Fachbefehl außerhalb *.action.ts wird ROT
+  [OK ] ADR-02: dyn. import(`../${x}/...`) wird ROT
+  [OK ] ADR-04: String-Decoy-Guard wird ROT
+  [OK ] ADR-04: Destrukturierung mit echtem Guard bleibt GRÜN
+  [OK ] K31: Archiv-PII wird ROT
+  [OK ] K31: kein Klartext-Leak (Dateiname/IBAN maskiert)
+  [OK ] ADR-01: idempotentes DROP IF EXISTS + CREATE POLICY bleibt GRÜN
+  [OK ] ADR-01: CREATE POLICY gefolgt von DROP POLICY wird ROT
+  [OK ] K29: unbalanciertes Mermaid wird ROT
+  [OK ] K29: leeres classDiagram wird ROT
+  [OK ] R6: .github/workflows/ci.yml push-Trigger deckt realen Hauptbranch (main, master)
+  [OK ] R6: .github/workflows/codeql.yml push-Trigger deckt realen Hauptbranch (main, master)
+  [OK ] P57: pgboss-Tabelle außerhalb der generierten Migration wird ROT
+  [OK ] P57: generierte pg-boss-Migration bleibt GRÜN (kein Fund zu pgboss)
+  [OK ] C-1/R1: dynamisch gebauter GUC-Name (set_config($1…)) wird ROT
+  [OK ] C-1/R1: WebCrypto-Schlüsselmaterial in der Web-App wird ROT
+  [OK ] C-1: set_config('app.…') im App-Code wird ROT
+  [OK ] C-1: SET LOCAL app.actor im App-Code wird ROT
+  [OK ] C-1: Erwähnung nur im Kommentar bleibt GRÜN
+  [OK ] C-1: HMAC-/Schlüsselmaterial in der Web-App wird ROT
+  [OK ] C-1: spätere GUC-Definition von vv_current_tenant() wird ROT
+  [OK ] C-1/R1: Ablaufprüfung mit statement_timestamp statt realer Uhr wird ROT
+  [OK ] C-1: reale Migrationen: Kontext-Funktionen lesen keine GUC (GRÜN)
+------------------------------------------------------------
+Validator-Selbsttest: 25/25 Erwartungen erfüllt

@@ -1,0 +1,20 @@
+{
+  "name": "@vv/ticket",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VV Ticket-Dienst (C-1 Kontext-Signatur): prüft Keycloak-Access-Token, stellt kurzlebige HMAC-Tickets für die DB aus.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "jose": "^6.2.12",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^7.0.2"
+  }
+}

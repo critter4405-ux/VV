@@ -20,7 +20,7 @@ from .common import REPO, CheckResult, Finding
 from . import merge as merge_mod
 from .checks import (
     schema_check, adr01_rls, adr02_imports, adr04_policy,
-    k29_dossier, evidence, synthetic_guard, project_recon, db_live,
+    k29_dossier, evidence, synthetic_guard, project_recon, db_live, c1_context,
 )
 
 
@@ -55,6 +55,7 @@ def main() -> int:
         evidence.run(),
         synthetic_guard.run(),
         db_live.run(),
+        c1_context.run(),
     ]
 
     print("=" * 74)
