@@ -7,7 +7,7 @@
 
 - **Code:** VV-BASIS-02
 - **Name:** Rollen & Rechte
-- **Version:** 0.2 (Kern)
+- **Version:** 0.4 (Kern, C-1)
 - **Datum:** 24.09.2026
 - **Verantwortlich:** Bau-KI Claude Code + Opus 5.5 · Prüf-KI Fremdmodell (ausstehend) · Freigabe Betreiber
 - **Status/Gate:** in_bau · Gate 1 gemeinsam mit M05 (gesperrt bis Review + Freigabe)
@@ -32,7 +32,7 @@
 - Migration [0006_rbac_core.sql](../../db/migrations/0006_rbac_core.sql): `role_type`, `role_permission`, `sod_rule` (global) · `scope_node`, `principal_link` (RLS) · `role_assignment` + Scope-FK, Widerruf, Trigger `vv_role_assignment_guard` (SoD + nur Widerruf änderbar, serialisiert je Person).
 - Funktionen: `vv_authorize(_subject)`, `vv_policy_any`, `vv_person_scopes`, `vv_scope_ancestors`, `rbac_assign_role`, `rbac_revoke_role`, `rbac_create_scope_node`; Onboarding `rbac_onboard_root`, `rbac_link_principal` (nur Bootstrap).
 - App: [policy.ts](../../apps/web/src/platform/policy.ts) ruft `vv_policy_any` im Tenant-/Actor-Kontext, fail-closed, protokolliert Verweigerungen.
-- `vv_app`: kein INSERT/UPDATE/DELETE auf `role_assignment`, kein Zugriff auf `principal_link`.
+- `vv_app`: kein INSERT/UPDATE/DELETE auf `role_assignment`, kein Zugriff auf `principal_link`. **Seit C-1 (VV-SEC-01, 26.09.2026):** überhaupt keine Tabellenrechte mehr; Lesen nur über `basis02_list_role_assignments()`, Rollen vergeben/entziehen (`rbac_assign_role`/`rbac_revoke_role`) nur mit geprüftem Ticket und als **Einmal-Aktion**; der SoD-Trigger arbeitet fail-closed ohne passenden Kontext; Akteur für Autorisierung/SoD = geprüfter Ticket-Akteur statt frei setzbarer GUC.
 
 ## 5. Wie getestet
 
@@ -80,3 +80,4 @@ Jede Person sieht und tut nur, was ihre Funktion im Verein verlangt — der Trai
 - 16.09.2026 — Skeleton angelegt (Stage 0 Startpaket-Harvest).
 - 24.09.2026 — v0.3: Reparaturrunde 1 (P52): zentraler Prüfpunkt wertet `scopeNode` aus (`verein` = Wurzelrecht, `<uuid>` = Knoten, `any` nur bei DB-Objektprüfung, sonst deny; R7); Freigeber-Recht × Scope jetzt auch DB-seitig in `vv_decide_approval` (R4). Details: [VV-M05 §6a](VV-M05.md).
 - 24.09.2026 — v0.2: Kern mit M05 gebaut (P50-8): datengetriebene Prüfung App + DB, Scope-Baum, Seed-Rechteprofile, SoD-Kern-Trigger, Principal-Bindung. Review + Freigabe ausstehend.
+- 26.09.2026 — v0.4: **C-1 Kontext-Signatur** ([VV-SEC-01](VV-SEC-01.md), PR #21 → `master` `73455a3`): Kontext (Mandant/Akteur) nur noch aus geprüftem Ticket; Direktrechte von `vv_app` entfallen; Rollenvergabe/-entzug als Einmal-Aktion; SoD-Trigger fail-closed. Restrisiko C-1 geschlossen.

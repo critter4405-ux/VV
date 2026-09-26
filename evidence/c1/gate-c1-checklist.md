@@ -1,6 +1,6 @@
 # Gate-Checkliste C-1 „Kontext-Signatur" — Definition of Done (Bau-Auftrag v1.0, §5)
 
-> Stand: Bau-Verifikation 25.09.2026, nach Reparatur Review R1, Branch `feat/c1-kontext-signatur`, frische PostgreSQL 16.13. Vier-Augen-Review **konvergiert** (R1 Codex + Gemini, Reparatur, R2 Gemini „bestanden“; Codex-Live-Runde 2 entfallen, Betreiber-Entscheidung — [Abschluss R2](review-r2/ABSCHLUSS-R2.md)). **Gate gesperrt** bis der Betreiber per Pull Request freigibt.
+> Stand: Bau-Verifikation 25.09.2026, nach Reparatur Review R1, Branch `feat/c1-kontext-signatur`, frische PostgreSQL 16.13. Vier-Augen-Review **konvergiert** (R1 Codex + Gemini, Reparatur, R2 Gemini „bestanden“; Codex-Live-Runde 2 entfallen, Betreiber-Entscheidung — [Abschluss R2](review-r2/ABSCHLUSS-R2.md)). **FREIGEGEBEN (Betreiber, 26.09.2026):** Merge PR #21 → `master` (`73455a3`) nach 27/27 grünen Checks; die Bau-KI hat das Gate nicht geöffnet.
 
 | # | DoD-Punkt | Nachweis | Status |
 |---|---|---|---|

@@ -7,7 +7,7 @@
 
 - **Code:** VV-M05 (+ BASIS-02-Kern, P50-8)
 - **Name:** Mitglieder (Mitglieder-CRM)
-- **Version:** 1.4 (Phase 1 — freigegeben)
+- **Version:** 1.5 (Phase 1 — freigegeben; C-1 geschlossen)
 - **Datum:** 24.09.2026
 - **Verantwortlich:** Bau-KI Claude Code + Opus 5.5 (Stufe hoch) · Prüf-KI GPT-5.x Codex + Gemini 3.x Pro (ausstehend) · Freigabe Betreiber
 - **Status/Gate:** **freigegeben** · Gate 1 (M05) durch Betreiber-Entscheidung geöffnet (25.09.2026, PR #16 → `master` `b60c81d`)
@@ -93,7 +93,7 @@ Prüfer: **Codex GPT-6 Sol** (kalibriert, P53) „nicht bestanden" · **Gemini 3
 
 | ID | Befund | Einstufung | Maßnahme | Gegenprobe |
 |---|---|---|---|---|
-| C-1 | Mit den DB-Zugangsdaten der Web-App lassen sich Mandant/Actor frei setzen (Antragsteller + Freigeber in einer Verbindung) | **Design-Grenze** (ADR-01/04), über HTTP nicht ausnutzbar | **Restrisiko dokumentiert (Betreiber)**; Stage-1-Pflicht **vor S3**: Kontext-Signatur (Auth-Dienst, HMAC-Prüfung in der DB) | — |
+| C-1 | Mit den DB-Zugangsdaten der Web-App lassen sich Mandant/Actor frei setzen (Antragsteller + Freigeber in einer Verbindung) | **Design-Grenze** (ADR-01/04), über HTTP nicht ausnutzbar | ~~Restrisiko~~ → **GESCHLOSSEN (26.09.2026) durch C-1 Kontext-Signatur** ([VV-SEC-01](VV-SEC-01.md), Register P58/P59): Mandant/Actor nur noch aus geprüftem HMAC-Ticket, keine Direktrechte mehr für `vv_app`, Einmal-Tickets für Verbindliches | c1_db_asserts DoD1 (P54-Repro rot) |
 | H-1 | Leerer/unbekannter Builder galt als „andere Familie" | echt | nur bekannte Modellfamilien (Kanon), unbekannt/leer → nicht freigebbar | ci_db_asserts R2/H-1 (2) · vier_augen.test |
 | H-1b | Reviewer-Kennung = Freitext | Design/Stage-1 | Artefakt-Bindung mit Prüf-Agent (BASIS-09) | — |
 | H-2 | Worker konnte per SQL beliebige Topics claimen | echt | **Consumer-Register `outbox_consumer`** in der DB; Claim nur für registrierte Topics; Pflege nur per Migration | ci_db_asserts R2/H-2 (2) |
@@ -102,7 +102,7 @@ Prüfer: **Codex GPT-6 Sol** (kalibriert, P53) „nicht bestanden" · **Gemini 3
 | N-1 | Freigabe-FKs nicht mandantendicht | echt | `approval` `UNIQUE(tenant_id,id)` + zusammengesetzte FKs | m05_db_asserts R2/N-1 (2) |
 | Umg. | R6-Selbsttest hing an `origin/HEAD` | echt (NIEDRIG) | feste Hauptbranch-Menge `master`/`main` | selftest R6 |
 
-**Nicht in dieser Runde (Stage-1-Backlog, dokumentiert):** Validator-Umgehungen H-04/H-08–H-12, M-01/M-02 (Umstellung auf TS-AST + `pg_catalog`-Abgleich, Testfälle aus dem GPT-Bericht als Regressionen) · H-13 (Compose-Health/OIDC-Smoke) · M-03 (Live-Report-Upload) · B-01 (Design) · B-04/H-01 (Gateway-Heuristik, Residuum bis Agenten-Bau) · direkte `vv_app`-SELECT-Rechte auf `person`/`role_assignment` (Stage-0-Demo-Pfad).
+**Nicht in dieser Runde (Stage-1-Backlog, dokumentiert):** Validator-Umgehungen H-04/H-08–H-12, M-01/M-02 (Umstellung auf TS-AST + `pg_catalog`-Abgleich, Testfälle aus dem GPT-Bericht als Regressionen) · H-13 (Compose-Health/OIDC-Smoke) · M-03 (Live-Report-Upload) · B-01 (Design) · B-04/H-01 (Gateway-Heuristik, Residuum bis Agenten-Bau) · ~~direkte `vv_app`-SELECT-Rechte auf `person`/`role_assignment` (Stage-0-Demo-Pfad)~~ → erledigt mit C-1 (VV-SEC-01).
 
 ## 7. Visual (Pflicht)
 
@@ -142,3 +142,4 @@ Der Verein weiß jederzeit, wer seit wann in welcher Art Mitglied ist — mit l�
 - 25.09.2026 — v1.2: **Review Runde 2 + Reparaturrunde 2** (Register P53/P54): Codex GPT-6 Sol + Gemini 3.1 Pro; H-1, H-2, M-1, M-2, N-1, R6-Probe behoben (8 neue Gegenproben, rot gegen alten Stand); C-1 als Design-Grenze/Restrisiko (Betreiber), Stage-1-Pflicht vor S3. M05 137/137, Stage-0 37/37. **Bestätigungs-Review + Freigabe ausstehend.**
 - 24.09.2026 — v1.1: **Reparaturrunde 1 / Sicherheits-Retrofit** (Register P52, Bezug P48/P49): R1–R8 aus dem Repair-Auftrag + Gemini G-1–G-3 verifiziert, eingestuft und behoben (Migration 0011, Worker/Web/Validator-Selbsttest); Stage-0-Kern (Audit, Freigabe, Outbox, CI-Trigger) nachgehärtet, durch die M05-Freigabe gedeckt. Gegenproben M05 133/133, Stage-0 33/33, Selbsttest 14/14. **Formales Vier-Augen-Review (Codex-Modell nach Kalibrierung) + Freigabe ausstehend.**
 - 24.09.2026 — v1.0: M05 Phase 1 gebaut; Selbstcheck vor Review: S0-3 (Outbox-Spoofing), M-1 (Se im Freigabe-Objekt), M-2 (gesperrt in Detailansicht) geschlossen (Bau-KI Opus 5.5) nach Grill P50 (13 Entscheidungen); BASIS-02-Kern mitgebaut; Stage-0-Befunde S0-1/S0-2 geschlossen; Validator-Härtung ADR-01 (Statement-Reihenfolge) + ADR-04 (je Aktion, Fachbefehle); Vereinsplaner-Mapping v1. **Review + Freigabe ausstehend.**
+- 26.09.2026 — v1.5: **C-1 geschlossen** durch VV-SEC-01 (Kontext-Signatur, PR #21 → `master` `73455a3`): M05-Befehle laufen nur noch mit geprüftem Ticket; 9 verbindliche Befehle (u. a. `m05_decide`, `m05_decide_proposal`, `m05_request_termination`, Import, Export, gesperrte Daten) verbrauchen ein Einmal-Ticket; Listen prüfen den Kontext am Ende erneut. Leistungshinweis M05-Liste → Register P61.

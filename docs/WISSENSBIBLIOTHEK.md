@@ -4,11 +4,11 @@
 
 ## Module
 
-- **VV-M05 Mitglieder** — in_bau, Gate 1 (Review + Freigabe ausstehend): [Dossier (MD)](bausteine/VV-M05.md) · [HTML](bausteine/VV-M05.html)
+- **VV-M05 Mitglieder** — **freigegeben** (25.09.2026, PR #16), Gate 1: [Dossier (MD)](bausteine/VV-M05.md) · [HTML](bausteine/VV-M05.html)
 
 ## Sicherheit
 
-- **VV-SEC-01 Kontext-Signatur (Ticket-Dienst, C-1)** — in_bau, Gate 1 (Review + Freigabe ausstehend): [Dossier (MD)](bausteine/VV-SEC-01.md) · [HTML](bausteine/VV-SEC-01.html)
+- **VV-SEC-01 Kontext-Signatur (Ticket-Dienst, C-1)** — **freigegeben** (26.09.2026, PR #21), Gate 1: [Dossier (MD)](bausteine/VV-SEC-01.md) · [HTML](bausteine/VV-SEC-01.html)
 
 ## Fundament
 
