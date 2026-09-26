@@ -1,4 +1,4 @@
-== C-1 Kontext-Signatur: DB-Gegenproben (Lauf 7f2084) ==
+== C-1 Kontext-Signatur: DB-Gegenproben (Lauf 2f8130) ==
   [OK ] DoD1: P54-Repro 1 — set_config(tenant B) + SELECT person als vv_app verweigert
   [OK ] DoD1: frei gesetzte GUCs wirken nicht (vv_current_tenant/vv_actor bleiben leer)
   [OK ] DoD1: gefälschter Kontext öffnet auch über Funktionen nichts (0 Zeilen / deny)

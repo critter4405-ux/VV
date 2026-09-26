@@ -10,8 +10,9 @@ const KID = /^[a-z0-9]{1,16}$/;
 
 export interface TicketClaims { tenant: string; actor: string; iat: number; exp: number; jti: string }
 
+// Node-eigenes Base64url (RFC 4648 §5, ohne Padding) — kein Regex über Eingabedaten (CodeQL js/polynomial-redos).
 export function b64url(buf: Buffer): string {
-  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return buf.toString("base64url");
 }
 
 /** Baut die Nutzlast. exp = min(iat + ttl, Token-Ablauf) — ein Ticket überlebt nie das Access-Token. */

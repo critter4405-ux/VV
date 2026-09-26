@@ -1,7 +1,7 @@
 // VV Ticket-Dienst — Schlüsselbund (Docker-Secret, nur in diesem Container eingebunden; ADR-11 sops/age).
 // Format (scripts/rotate_ticket_key.sh): {"version":1,"active":"<kid>","keys":{"<kid>":"<base64, ≥32 Byte>"}}
 // Wird bei Änderung der Datei (mtime/Größe) und auf SIGHUP neu geladen — Schlüsselwechsel ohne Zustand.
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readFileSync } from "node:fs";
 
 export interface ActiveKey { kid: string; key: Buffer }
 
@@ -22,14 +22,21 @@ export class KeyringFile {
   constructor(private readonly path: string) {}
 
   /** Aktueller Signaturschlüssel; wirft (fail-closed), wenn die Datei fehlt/ungültig ist. */
+  // Prüfen und Lesen über DENSELBEN Datei-Deskriptor: kein Zeitfenster zwischen stat und read, in dem die
+  // Datei (z. B. beim Schlüsselwechsel) ausgetauscht werden könnte (CodeQL js/file-system-race).
   current(): ActiveKey {
-    const st = statSync(this.path);
-    const stamp = `${st.mtimeMs}:${st.size}:${st.ino}`;
-    if (!this.cached || stamp !== this.stamp) {
-      this.cached = parseKeyring(readFileSync(this.path, "utf8"));
-      this.stamp = stamp;
+    const fd = openSync(this.path, "r");
+    try {
+      const st = fstatSync(fd);
+      const stamp = `${st.mtimeMs}:${st.size}:${st.ino}`;
+      if (!this.cached || stamp !== this.stamp) {
+        this.cached = parseKeyring(readFileSync(fd, "utf8"));
+        this.stamp = stamp;
+      }
+      return this.cached;
+    } finally {
+      closeSync(fd);
     }
-    return this.cached;
   }
 
   reload(): void { this.stamp = ""; }
