@@ -2,8 +2,8 @@
   "code": "VV-SEC-01",
   "name": "Kontext-Signatur (Ticket-Dienst, C-1)",
   "kind": "core",
-  "version": "1.0",
-  "status": "in_bau",
+  "version": "1.2",
+  "status": "freigegeben",
   "gate": 1,
   "adr": [
     "ADR-01",
@@ -33,11 +33,13 @@
   "gates": [
     {
       "id": 1,
-      "title": "C-1 Kontext-Signatur — Bau verifiziert, Vier-Augen-Review + Betreiber-Freigabe (PR) ausstehend",
+      "title": "C-1 Kontext-Signatur — FREIGEGEBEN (Betreiber, 26.09.2026, PR #21 → master 73455a3)",
       "evidence": [
-        "evidence/c1/verification.md",
+        "docs/bausteine/VV-SEC-01.md",
+        "evidence/c1/codeql-pr21.md",
         "evidence/c1/gate-c1-checklist.md",
-        "docs/bausteine/VV-SEC-01.md"
+        "evidence/c1/review-r2/ABSCHLUSS-R2.md",
+        "evidence/c1/verification.md"
       ]
     }
   ],
@@ -48,6 +50,10 @@
     "K34",
     "K36",
     "B09-1",
-    "B10-1"
+    "B10-1",
+    "P59",
+    "P60",
+    "P61",
+    "P62"
   ]
 }

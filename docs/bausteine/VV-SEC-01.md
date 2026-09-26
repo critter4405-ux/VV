@@ -1,16 +1,16 @@
 # Bau-Dossier — VV-SEC-01 · Kontext-Signatur (Ticket-Dienst, C-1)
 
 > **Bau-Dossier (K29).** Sicherheits-Architekturschritt C-1, gebaut nach Bau-Auftrag v1.0 (freigegeben 25.09.2026, Grill **P58**).
-> **Status: verifiziert, Review konvergiert** — Runde 1 (GPT-6 Sol + Gemini 3.1 Pro) repariert, Runde 2 Gemini „bestanden“ (Codex-Live-Runde 2 entfallen, Betreiber-Entscheidung P60). Betreiber-Freigabe per Pull Request **ausstehend**. Die Bau-KI öffnet kein Gate.
+> **Status: FREIGEGEBEN (Betreiber, 26.09.2026)** — Review konvergiert (Runde 1 GPT-6 Sol + Gemini 3.1 Pro repariert, Runde 2 Gemini „bestanden“; Codex-Live-Runde 2 entfallen, Betreiber-Entscheidung P60); Merge Pull Request #21 → `master` (`73455a3`) nach 27/27 grünen Checks. Die Bau-KI öffnet kein Gate.
 
 ## 1. Kopf
 
 - **Code:** VV-SEC-01 (neuer Code-Bereich `VV-SEC-##` für bausteinübergreifende Sicherheitsschritte)
 - **Name:** Kontext-Signatur (Ticket-Dienst) — schließt Codex-Befund **C-1** (P54)
-- **Version:** 1.1 (Reparatur Review R1)
+- **Version:** 1.2 (freigegeben)
 - **Datum:** 25.09.2026
 - **Verantwortlich:** Bau-KI Claude Code + Opus 5.5 (hoch) · Prüf-KI GPT-6 Sol (Codex, Live-Lauf R1) + Gemini 3.1 Pro (R1 + R2) · Freigabe Betreiber
-- **Status/Gate:** `in_bau` · Gate 1 gesperrt bis Review-Konvergenz + Merge durch den Betreiber
+- **Status/Gate:** **freigegeben** · Gate 1 durch Betreiber-Entscheidung geöffnet (26.09.2026, PR #21 → `master` `73455a3`)
 - **Grundlage:** Bau-Auftrag `VV_C1_Bau-Auftrag_Kontext-Signatur.md` v1.0 · Register P54, P57, P58 · [project.json-Fragment](../../project/fragments/VV-SEC-01.project.json)
 
 ## 2. Was
@@ -108,3 +108,4 @@ Selbst wenn ein Angreifer die Web-Anwendung übernimmt, kann er in der Datenbank
 - **1.0 (25.09.2026):** Bau C-1 nach Bau-Auftrag v1.0 (P58) — Migration 0013, Ticket-Dienst, Web/Worker-Umstellung, Betreiber-Skript Schlüsselwechsel, Gegenproben/e2e/Validator, Evidenz `evidence/c1/`.
 - **1.1 (25.09.2026):** Reparatur Review R1 (Codex GPT-6 Sol + Gemini 3.1 Pro, [Einstufungen](../../evidence/c1/review-r1/)): H-01 Ablauf gegen reale Uhr + End-Prüfung Listen; M-01 `m05_decide_proposal` einmalig; N-01 doppelte Schlüssel; N-02 Probe App→Definer; N-03 Validator verschärft + Live-Invariante; E-1 Kontextfunktionen `plpgsql` (Leistung); CI-Probe mit frischen Tickets; G2/G3 Restrisiken + Zeitsync-Auflage.
 - **1.1a (26.09.2026):** Runde 2 — Gemini „bestanden“, keine neuen Befunde; Codex-Live-Runde entfallen (Werkzeug gesperrt), Abweichung als Betreiber-Entscheidung dokumentiert ([Abschluss R2](../../evidence/c1/review-r2/ABSCHLUSS-R2.md), Register P60). CI auf `8d6d16e` grün. Review konvergiert.
+- **1.2 (26.09.2026): FREIGABE (Betreiber)** — Merge Pull Request #21 `feat/c1-kontext-signatur` → `master` (`73455a3`) nach 27/27 grünen Checks. Vor dem Merge CodeQL-Befunde #30/#31 behoben, #32 als Fehlalarm geschlossen ([Einstufung](../../evidence/c1/codeql-pr21.md)). Ruleset `master-schutz` um die Pflicht-Checks des Ticket-Dienstes ergänzt. Die Bau-KI hat das Gate nicht geöffnet.
