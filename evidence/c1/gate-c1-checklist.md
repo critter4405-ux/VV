@@ -1,6 +1,6 @@
 # Gate-Checkliste C-1 „Kontext-Signatur" — Definition of Done (Bau-Auftrag v1.0, §5)
 
-> Stand: Bau-Verifikation 25.09.2026, nach Reparatur Review R1, Branch `feat/c1-kontext-signatur`, frische PostgreSQL 16.13. **Gate gesperrt** bis Vier-Augen-Review (GPT-6 Sol + Gemini 3.1 Pro) konvergiert und der Betreiber per Pull Request freigibt.
+> Stand: Bau-Verifikation 25.09.2026, nach Reparatur Review R1, Branch `feat/c1-kontext-signatur`, frische PostgreSQL 16.13. Vier-Augen-Review **konvergiert** (R1 Codex + Gemini, Reparatur, R2 Gemini „bestanden“; Codex-Live-Runde 2 entfallen, Betreiber-Entscheidung — [Abschluss R2](review-r2/ABSCHLUSS-R2.md)). **Gate gesperrt** bis der Betreiber per Pull Request freigibt.
 
 | # | DoD-Punkt | Nachweis | Status |
 |---|---|---|---|
@@ -15,6 +15,6 @@
 | 9 | **Regression:** Stage 0, M05, R1–R8, G-1–G-3, R2-Fixes grün, auf Ticket-Weg umgestellt, nicht abgeschwächt | [db-asserts.txt](db-asserts.txt) (Stage-0 38/38, M05 140/140) · [test-web.txt](test-web.txt) · [test-worker.txt](test-worker.txt) | erfüllt |
 | 10 | **Validatoren + Selbsttest** grün; neue Proben „keine Direkt-Grants an vv_app“, „keine `set_config('app.…')` in der App“ | [validator-live.txt](validator-live.txt) · [validator-report.json](validator-report.json) · [selftest.txt](selftest.txt) (25/25, davon 9 C-1) | erfüllt |
 | 11 | **Bau-Dossier** (K29, 9-teilig + Mermaid), Evidenz `evidence/c1/`, Register-Eintrag | [VV-SEC-01.md](../../docs/bausteine/VV-SEC-01.md) · dieses Verzeichnis · Register P59 (Projekt) | erfüllt |
-| 12 | **Typecheck/Tests** Web/Worker/Ticket grün, `npm audit` 0, `docker compose config` valide, **CI auf GitHub grün** | [typecheck.txt](typecheck.txt) · [test-ticket.txt](test-ticket.txt) · [npm-audit.txt](npm-audit.txt) · [compose-config.txt](compose-config.txt) · CI: im Pull Request | lokal erfüllt · CI im PR |
+| 12 | **Typecheck/Tests** Web/Worker/Ticket grün, `npm audit` 0, `docker compose config` valide, **CI auf GitHub grün** | [typecheck.txt](typecheck.txt) · [test-ticket.txt](test-ticket.txt) · [npm-audit.txt](npm-audit.txt) · [compose-config.txt](compose-config.txt) · CI: im Pull Request | erfüllt (CI `8d6d16e`: vv-ci 11/11, CodeQL grün) |
 
 **Zusatz:** Migrationen 0006–0013 idempotent ([idempotenz.txt](idempotenz.txt), danach C-1-Proben erneut 83/83: [c1-asserts-nach-idempotenz.txt](c1-asserts-nach-idempotenz.txt)) · RLS-Leistung gemessen ([perf.md](perf.md)).
