@@ -43,7 +43,7 @@ def _scan_archive(path: str, rel: str, res: CheckResult) -> int:
     gescannt + maskiert (nie im Klartext ausgegeben)."""
     hits = 0
     if not zipfile.is_zipfile(path):
-        return 0
+        return _scan_raw(path, rel, res)          # „.zip/.xlsx“ ohne ZIP-Inhalt: als Rohtext prüfen, nie überspringen
     try:
         with zipfile.ZipFile(path) as zf:
             for idx, info in enumerate(zf.infolist()):
@@ -58,8 +58,16 @@ def _scan_archive(path: str, rel: str, res: CheckResult) -> int:
                     continue
                 hits += _scan_text(raw, f"{label}:inhalt", res)
     except zipfile.BadZipFile:
-        pass
+        # Defektes ZIP: nicht als Archiv lesbar -> als Rohtext prüfen (fail-closed statt still übersprungen).
+        return hits + _scan_raw(path, rel, res)
     return hits
+
+
+def _scan_raw(path: str, rel: str, res: CheckResult) -> int:
+    """Datei als Rohbytes lesen und als Text prüfen (ungültige UTF-8-Folgen ignoriert)."""
+    with open(path, "rb") as fh:
+        raw = fh.read(8_000_000).decode("utf-8", errors="ignore")
+    return _scan_text(raw, f"{rel}:roh", res)
 
 
 def run() -> CheckResult:
@@ -79,7 +87,8 @@ def run() -> CheckResult:
                 hits += _scan_archive(path, rel, res); continue
             if ext in BINARY_EXT: continue
             try:
-                text = open(path, encoding="utf-8", errors="strict").read()
+                with open(path, encoding="utf-8", errors="strict") as fh:
+                    text = fh.read()
             except (OSError, UnicodeDecodeError):
                 continue  # echte Binärdatei -> übersprungen
             hits += _scan_text(text, rel, res)

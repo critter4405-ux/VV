@@ -20,3 +20,4 @@
 
 - ADR-01 … ADR-11: [docs/adr/](adr/)
 - Review Stage 0: [Auftrag](REVIEW-Auftrag-Stage-0.md) · [Befunde](REVIEW-Befunde-Stage-0.md)
+- **Betriebsauflagen (Checkliste vor/bei jedem Deployment):** [BETRIEB-Auflagen.md](BETRIEB-Auflagen.md)

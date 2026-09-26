@@ -3,12 +3,22 @@
 // SECURITY-DEFINER-Funktion). Kein Job überschreitet autonom eine harte Grenze — er legt
 // ein Freigabe-Objekt an (Vier-Augen, siehe agents/vier_augen.ts).
 import { PgBoss } from "pg-boss";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { claimOutbox, markOutboxDone, markOutboxFail, pool } from "./db.ts";
 import { handleM05Outbox, runM05Daily, M05_TOPICS } from "./jobs/m05.ts";
 
+// Heartbeat für den Compose-Healthcheck. Eigener Ordner statt des gemeinsamen /tmp (CodeQL
+// js/insecure-temporary-file: vorhersagbarer Name in einem für alle beschreibbaren Verzeichnis).
+const HEARTBEAT_FILE = process.env.VV_HEARTBEAT_FILE ?? "/run/vv-worker/alive";
+
 function beat() {
-  try { writeFileSync("/tmp/vv-worker-alive", String(Date.now())); } catch { /* ignore */ }
+  try {
+    mkdirSync(dirname(HEARTBEAT_FILE), { recursive: true, mode: 0o700 });
+    writeFileSync(HEARTBEAT_FILE, String(Date.now()), { mode: 0o600 });
+  } catch {
+    // Heartbeat ist rein diagnostisch: schlägt er fehl, meldet der Healthcheck „unhealthy“ — der Worker läuft weiter.
+  }
 }
 
 // Topics, für die dieser Worker einen Consumer hat. Nur diese werden geclaimt (R5/H-06): Events

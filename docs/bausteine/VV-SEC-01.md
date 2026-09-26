@@ -76,6 +76,7 @@ Die Datenbank nimmt Mandant und Nutzer **nur noch mit einem Nachweis** an, den d
   - Hält die Web-App künftig **Refresh-Tokens** (serverseitiger Login-Flow), könnte sie Tickets ohne laufende Anfrage erzeugen → Auflage für den Frontend-/Login-Bau: Refresh-Tokens nicht im Web-Server, oder Option C.
   - Superuser/Betreiber-Zugang bleibt allmächtig (Bootstrap-Kontext nur für Superuser); Schutz über ADR-11 (Zugang, Audit-Anchoring).
 - **Freigaben:** keine bindende Wirkung ohne Betreiber-Freigabe; Merge nach `master` ist Betreiber-Entscheidung.
+- **Betriebsauflagen** (NTP, Schlüsselwechsel, Ausfall-Alarm, keine Refresh-Tokens im Web-Server, Restore → Schlüsselwechsel) als Checkliste: [BETRIEB-Auflagen.md](../BETRIEB-Auflagen.md).
 
 ## 7. Visual
 
