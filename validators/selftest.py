@@ -98,10 +98,10 @@ os.remove(z)
 # Aufräum-PR (CodeQL): „Archiv“-Endung ohne ZIP-Inhalt wurde still übersprungen -> jetzt als Rohtext geprüft.
 fz = os.path.join(tempfile.mkdtemp(prefix="vv_selftest_"), "export.xlsx")
 with open(fz, "w", encoding="utf-8") as fh:
-    fh.write("Name;IBAN\nMuster;" + IBAN + "\n")
+    fh.write("Name;E-Mail\nMuster;" + MAIL + "\n")   # synthetische Adresse (.invalid); keine Kontodaten auf Platte
 gr2 = CheckResult(name="t", adr="K31"); g._scan_archive(fz, "export.xlsx", gr2)
 out2 = "\n".join(f.detail for f in gr2.findings)
-expect("K31: falsche Archiv-Endung (Text als .xlsx) wird ROT, maskiert", any(not f.ok for f in gr2.findings) and IBAN not in out2)
+expect("K31: falsche Archiv-Endung (Text als .xlsx) wird ROT, maskiert", any(not f.ok for f in gr2.findings) and MAIL not in out2)
 os.remove(fz); os.rmdir(os.path.dirname(fz))
 
 # ADR-01 (M05-Bau): Reihenfolge der Policy-Statements zählt.
